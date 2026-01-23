@@ -76,10 +76,15 @@ class UpdateDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
+        commit_label = update_checker.latest_commit
+        if commit_label:
+            commit_label = commit_label[:7]
+            info_text = f"Downloading update {commit_label}..."
+        else:
+            info_text = "Downloading update..."
+
         # Info label
-        self.info_label = QLabel(
-            f"Downloading update v{update_checker.latest_version}..."
-        )
+        self.info_label = QLabel(info_text)
         layout.addWidget(self.info_label)
 
         # Progress bar

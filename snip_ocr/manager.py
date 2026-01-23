@@ -247,13 +247,22 @@ class Manager(QObject):
                 # Show notification
                 self._show_tray_message(
                     "Update Available",
-                    f"Version {self.update_checker.latest_version} is available.\n"
-                    "Click to download and install.",
+                    self._format_update_message(),
                     QSystemTrayIcon.MessageIcon.Information,
                     8000,
                 )
         except Exception as e:
             logger.warning(f"Failed to check for updates: {e}")
+
+    def _format_update_message(self) -> str:
+        """Format the update notification message."""
+        if self.update_checker.latest_commit:
+            commit_label = self.update_checker.latest_commit[:7]
+            return (
+                f"New build {commit_label} is available.\n"
+                "Click to download and install."
+            )
+        return "New build is available.\nClick to download and install."
 
     def _on_notification_clicked(self) -> None:
         """Handle notification click."""

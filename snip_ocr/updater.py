@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import requests
 
-from . import __version__
+from . import __commit__
 from .constants import GITHUB_REPO_NAME, GITHUB_REPO_OWNER
 
 if TYPE_CHECKING:
@@ -25,8 +25,9 @@ class UpdateChecker:
 
     def __init__(self) -> None:
         """Initialize the update checker."""
-        self.current_version = __version__
+        self.current_commit = __commit__
         self.latest_version: str | None = None
+        self.latest_commit: str | None = None
         self.download_url: str | None = None
         self.release_notes: str | None = None
 
@@ -64,7 +65,8 @@ class UpdateChecker:
                 release_data = response.json()
             
             self.latest_version = release_data.get("tag_name", "").lstrip("v")
-            self.release_notes = release_data.get("body", "")
+            self.release_notes = release_data.get("body") or ""
+            self.latest_commit = self._extract_commit_sha(self.release_notes)
 
             # Find the appropriate asset for the current platform
             assets = release_data.get("assets", [])
@@ -76,17 +78,17 @@ class UpdateChecker:
                     self.download_url = asset.get("browser_download_url")
                     break
 
-            # Compare versions
-            if self.latest_version and self._is_newer_version(
-                self.latest_version, self.current_version
+            # Compare commits
+            if self.latest_commit and self._is_newer_commit(
+                self.latest_commit, self.current_commit
             ):
                 logger.info(
-                    f"Update available: {self.current_version} -> {self.latest_version}"
+                    "Update available: %s -> %s", self.current_commit, self.latest_commit
                 )
                 return True
 
             logger.info(
-                f"No updates available. Current version: {self.current_version}"
+                "No updates available. Current commit: %s", self.current_commit
             )
             return False
 
@@ -97,29 +99,26 @@ class UpdateChecker:
             logger.warning(f"Failed to check for updates: {e}")
             return False
 
-    def _is_newer_version(self, latest: str, current: str) -> bool:
-        """Compare version strings.
+    def _is_newer_commit(self, latest: str, current: str) -> bool:
+        """Compare commit hashes.
 
         Args:
-            latest: Latest version string (e.g., "0.2.0").
-            current: Current version string (e.g., "0.1.0").
+            latest: Latest commit hash (e.g., "f8f53f1...").
+            current: Current commit hash (e.g., "a1b2c3d...").
 
         Returns:
-            True if latest is newer than current.
+            True if the commit hashes differ and current is known.
         """
-        try:
-            # Simple version comparison for semver
-            latest_parts = [int(x) for x in latest.split(".")]
-            current_parts = [int(x) for x in current.split(".")]
-
-            # Pad to same length
-            max_len = max(len(latest_parts), len(current_parts))
-            latest_parts += [0] * (max_len - len(latest_parts))
-            current_parts += [0] * (max_len - len(current_parts))
-
-            return latest_parts > current_parts
-        except (ValueError, AttributeError):
+        if not current or current == "unknown":
             return False
+        return latest != current
+
+    def _extract_commit_sha(self, body: str) -> str | None:
+        """Extract commit hash from release notes."""
+        for line in body.splitlines():
+            if "Built from commit:" in line:
+                return line.split("Built from commit:", 1)[1].strip() or None
+        return None
 
     def download_update(self, progress_callback=None) -> Path | None:
         """Download the update file.
