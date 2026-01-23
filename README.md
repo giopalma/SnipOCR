@@ -1,8 +1,8 @@
 # Snip OCR
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![PyQt6](https://img.shields.io/badge/PyQt6-6.5+-green.svg)](https://pypi.org/project/PyQt6/)
+[![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows)](https://github.com/giopalma/snip-ocr/releases)
+[![macOS](https://img.shields.io/badge/macOS-000000?logo=apple)](https://github.com/giopalma/snip-ocr/releases)
 
 **Screenshot to Markdown converter** with AI-powered OCR and full LaTeX support.
 
@@ -14,63 +14,64 @@ Capture any region of your screen with a hotkey, and instantly get clean Markdow
 - 🔬 **Scientific OCR** — Accurate extraction of text, formulas, and tables
 - 📐 **LaTeX Support** — Automatic `$...$` inline and `$$...$$` block formatting
 - 🌍 **Multi-language** — Output in Italian or English (auto-translates if needed)
+- 🤖 **Model Selection** — Choose between GPT-4o and GPT-4o-mini
 - 📋 **Clipboard Ready** — Markdown copied instantly, ready to paste
 - 🖥️ **System Tray** — Runs quietly in the background
 
 ## 🚀 Installation
 
-### Prerequisites
+### Download
 
-- Python 3.11 or higher
-- A [GitHub Token](https://github.com/settings/tokens) for the Azure AI endpoint
+Download the latest release for your platform:
 
-### Using uv (recommended)
+| Platform    | Download                                                                              |
+| ----------- | ------------------------------------------------------------------------------------- |
+| **Windows** | [SnipOCR-Setup.exe](https://github.com/giopalma/snip-ocr/releases/latest) (Installer) |
+| **macOS**   | [SnipOCR-Installer.dmg](https://github.com/giopalma/snip-ocr/releases/latest)         |
 
-```bash
-# Clone the repository
-git clone https://github.com/username/snip-ocr.git
-cd snip-ocr
+### First Run
 
-# Install dependencies
-uv sync
+On first launch, the app will ask you to configure your **GitHub Token**:
 
-# Configure your token
-cp .env.example .env
-# Edit .env and add your GITHUB_TOKEN
+1. Go to [GitHub Personal Access Tokens](https://github.com/settings/personal-access-tokens/new)
+2. Create a new token (no special permissions needed)
+3. Paste it into the Settings dialog
 
-# Run
-uv run main.py
-```
-
-### Using pip
-
-```bash
-pip install -r requirements.txt
-python main.py
-```
-
-## ⚙️ Configuration
-
-Create a `.env` file in the project root:
-
-```env
-GITHUB_TOKEN=your_github_token_here
-```
+That's it! Your token is saved securely and you won't need to configure it again.
 
 ## 📖 Usage
 
-1. **Start the application** — Run `uv run main.py`
+1. **Start the application** — Run SnipOCR from your Start Menu or Applications folder
 2. **Look for the tray icon** — The app runs in your system tray
 3. **Capture a region** — Press `Ctrl+Shift+S` or click the tray icon
 4. **Select the area** — Click and drag to select the screen region
 5. **Paste anywhere** — The Markdown is now in your clipboard!
 
-### Changing Output Language
+### Settings
 
-Right-click the tray icon to switch between:
+Right-click the tray icon to access:
 
-- 🇮🇹 **Italiano**
-- 🇬🇧 **English**
+- 🌍 **Language** — Switch between Italian and English output
+- 🤖 **Model** — Choose GPT-4o or GPT-4o-mini
+- ⚙️ **Settings** — Update your GitHub Token
+
+## 🛠️ Development
+
+For contributors who want to run from source:
+
+```bash
+# Clone the repository
+git clone https://github.com/giopalma/snip-ocr.git
+cd snip-ocr
+
+# Install dependencies
+uv sync
+
+# Run
+uv run main.py
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 ## 🤝 Contributing
 
