@@ -24,10 +24,10 @@ Capture any region of your screen with a hotkey, and instantly get clean Markdow
 
 Download the latest release for your platform:
 
-| Platform    | Download                                                                              |
-| ----------- | ------------------------------------------------------------------------------------- |
-| **Windows** | [SnipOCR-Setup.exe](https://github.com/giopalma/snip-ocr/releases/latest) (Installer) |
-| **macOS**   | [SnipOCR-Installer.dmg](https://github.com/giopalma/snip-ocr/releases/latest)         |
+| Platform    | Download                                                                                 |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| **Windows** | [SnipOCR-Setup.exe](https://github.com/giopalma/SnipOCR/releases/tag/latest) (Installer) |
+| **macOS**   | [SnipOCR-Installer.dmg](https://github.com/giopalma/SnipOCR/releases/tag/latest)         |
 
 ### First Run
 
@@ -61,8 +61,8 @@ For contributors who want to run from source:
 
 ```bash
 # Clone the repository
-git clone https://github.com/giopalma/snip-ocr.git
-cd snip-ocr
+git clone https://github.com/giopalma/SnipOCR.git
+cd SnipOCR
 
 # Install dependencies
 uv sync
