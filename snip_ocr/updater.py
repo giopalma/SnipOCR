@@ -117,7 +117,8 @@ class UpdateChecker:
         """Extract commit hash from release notes."""
         for line in body.splitlines():
             if "Built from commit:" in line:
-                return line.split("Built from commit:", 1)[1].strip() or None
+                result = line.split("Built from commit:", 1)[1].strip()
+                return result if result else None
         return None
 
     def download_update(self, progress_callback=None) -> Path | None:
