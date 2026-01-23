@@ -408,16 +408,23 @@ class Snipper(QWidget):
         rect = QRect(self.begin, self.end).normalized()
         self.hide()
         if rect.width() > 10 and rect.height() > 10:
+            # Convert local widget coordinates to global screen coordinates
+            global_begin = self.mapToGlobal(rect.topLeft())
+            global_rect = QRect(global_begin, rect.size())
+
+            # Find the screen at the selection's top-left corner
             screen = (
-                QGuiApplication.screenAt(self.begin) or QGuiApplication.primaryScreen()
+                QGuiApplication.screenAt(global_begin)
+                or QGuiApplication.primaryScreen()
             )
             screen_geo = screen.geometry()
 
+            # Calculate the position relative to the target screen
             rel_rect = QRect(
-                rect.x() - screen_geo.x(),
-                rect.y() - screen_geo.y(),
-                rect.width(),
-                rect.height(),
+                global_rect.x() - screen_geo.x(),
+                global_rect.y() - screen_geo.y(),
+                global_rect.width(),
+                global_rect.height(),
             )
 
             pixmap = screen.grabWindow(
