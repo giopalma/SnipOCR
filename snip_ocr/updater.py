@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
+COMMIT_NOTE_PREFIX = "Built from commit:"
+SHA1_HEX_LENGTH = 40
 
 
 class UpdateChecker:
@@ -68,9 +70,12 @@ class UpdateChecker:
             self.release_notes = release_data.get("body") or ""
             self.latest_commit = self._extract_commit_sha(self.release_notes)
             if not self.latest_commit:
+                target_commitish = release_data.get("target_commitish")
                 self.latest_commit = self._extract_commit_sha_from_target(
-                    release_data.get("target_commitish")
+                    target_commitish
                 )
+                if not self.latest_commit:
+                    self.latest_commit = self._fetch_commit_sha(target_commitish)
 
             # Find the appropriate asset for the current platform
             assets = release_data.get("assets", [])
@@ -121,18 +126,40 @@ class UpdateChecker:
     def _extract_commit_sha(self, body: str) -> str | None:
         """Extract commit hash from release notes."""
         for line in body.splitlines():
-            if "Built from commit:" in line:
-                result = line.split("Built from commit:", 1)[1].strip()
-                return result if result else None
+            if COMMIT_NOTE_PREFIX in line:
+                result = line.split(COMMIT_NOTE_PREFIX, 1)[1].strip()
+                return result if self._is_valid_sha(result) else None
         return None
 
     def _extract_commit_sha_from_target(self, target: object) -> str | None:
         """Extract commit hash from target_commitish when it looks like a SHA."""
-        if isinstance(target, str) and len(target) >= 7 and all(
-            ch in "0123456789abcdef" for ch in target.lower()
-        ):
+        if isinstance(target, str) and self._is_valid_sha(target):
             return target
         return None
+
+    def _is_valid_sha(self, value: str) -> bool:
+        """Return True when value looks like a full SHA-1 hash."""
+        if len(value) != SHA1_HEX_LENGTH:
+            return False
+        return all(ch in "0123456789abcdef" for ch in value.lower())
+
+    def _fetch_commit_sha(self, target: object) -> str | None:
+        """Fetch the commit SHA for a branch or tag."""
+        if not isinstance(target, str) or not target:
+            return None
+        try:
+            url = (
+                f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/"
+                f"{GITHUB_REPO_NAME}/commits/{target}"
+            )
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            sha = data.get("sha")
+            return sha if isinstance(sha, str) and sha else None
+        except requests.exceptions.RequestException as e:
+            logger.warning("Failed to resolve commit target %s: %s", target, e)
+            return None
 
     def download_update(self, progress_callback=None) -> Path | None:
         """Download the update file.
