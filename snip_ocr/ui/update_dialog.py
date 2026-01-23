@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..constants import APP_DISPLAY_NAME
+from ..icon_utils import get_icon
 
 if TYPE_CHECKING:
     from ..updater import UpdateChecker
@@ -69,6 +70,10 @@ class UpdateDialog(QDialog):
         super().__init__(parent)
         self.update_checker = update_checker
         self.update_file: Path | None = None
+
+        icon = get_icon()
+        if icon:
+            self.setWindowIcon(icon)
 
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - Update")
         self.setMinimumWidth(400)

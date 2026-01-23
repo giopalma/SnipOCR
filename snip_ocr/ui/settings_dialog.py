@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 
 from ..config import load_model, load_token, save_config
 from ..constants import APP_DISPLAY_NAME, AVAILABLE_MODELS
+from ..icon_utils import get_icon_path
 
 if TYPE_CHECKING:
     pass
@@ -35,6 +36,9 @@ class SettingsDialog(QDialog):
             parent: Optional parent widget.
         """
         super().__init__(parent)
+        icon_path = get_icon_path()
+        if icon_path:
+            self.setWindowIcon(QIcon(str(icon_path)))
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - Settings")
         self.setMinimumWidth(400)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
