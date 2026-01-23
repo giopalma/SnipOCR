@@ -17,6 +17,10 @@ help:
 run:
 	uv run main.py
 
+run-fresh:
+	@if exist "$(APPDATA)\SnipOCR\config.json" del /q "$(APPDATA)\SnipOCR\config.json"
+	uv run main.py
+
 build:
 	uv run pyinstaller $(PYINSTALLER_SPEC) --distpath dist --workpath build --noconfirm
 

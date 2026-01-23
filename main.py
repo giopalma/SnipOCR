@@ -53,8 +53,10 @@ if TYPE_CHECKING:
 import os
 
 # --- Configuration ---
-APP_NAME = "SnipOCR"
+APP_NAME = "SnipOCR"  # Used for file paths and directories
+APP_DISPLAY_NAME = "Snip OCR"  # Used for UI display
 ENDPOINT: str = "https://models.inference.ai.azure.com/chat/completions"
+HOTKEY_SHORTCUT = "Ctrl+Shift+S"
 
 
 def get_config_path() -> Path:
@@ -185,7 +187,7 @@ class SettingsDialog(QDialog):
             parent: Optional parent widget.
         """
         super().__init__(parent)
-        self.setWindowTitle(f"{APP_NAME} - Settings")
+        self.setWindowTitle(f"{APP_DISPLAY_NAME} - Settings")
         self.setMinimumWidth(400)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
 
@@ -488,8 +490,19 @@ class Manager(QObject):
         # Show settings dialog on first run if no token configured
         if not GITHUB_TOKEN:
             self._show_first_run_dialog()
+        else:
+            # Show startup notification for subsequent runs
+            self._show_tray_message(
+                APP_DISPLAY_NAME,
+                f"{APP_DISPLAY_NAME} is ready!\n"
+                f"Press {HOTKEY_SHORTCUT} to capture.",
+                QSystemTrayIcon.MessageIcon.Information,
+                3000,
+            )
 
-        logger.info("Snip OCR started. Press Ctrl+Shift+S to capture.")
+        logger.info(
+            "%s started. Press %s to capture.", APP_DISPLAY_NAME, HOTKEY_SHORTCUT
+        )
 
     def _get_icon_path(self) -> Path | None:
         """Get the path to the application icon.
@@ -528,7 +541,7 @@ class Manager(QObject):
             icon = self.app.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
 
         self.tray = QSystemTrayIcon(icon, self.app)
-        self.tray.setToolTip("Snip OCR - Ctrl+Shift+S")
+        self.tray.setToolTip(f"{APP_DISPLAY_NAME} - {HOTKEY_SHORTCUT}")
 
         menu = QMenu()
 
@@ -565,18 +578,66 @@ class Manager(QObject):
 
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(self._on_tray_click)
+
+        # Show the tray icon
         self.tray.show()
+
+        # On Windows, ensure notifications are not suppressed and check support
+        self._ensure_tray_visible_on_windows()
+
+    def _ensure_tray_visible_on_windows(self) -> None:
+        """Ensure tray icon is visible on Windows platform.
+
+        On Windows, explicitly setting visibility can help prevent
+        notification suppression issues. Also logs notification support status.
+        """
+        if sys.platform == "win32" and self.tray:
+            self.tray.setVisible(True)
+            # Make sure the message balloon is supported
+            if self.tray.supportsMessages():
+                logger.info("System tray notifications are supported.")
+            else:
+                logger.warning(
+                    "System tray notifications may not be supported on this system."
+                )
+
+    def _show_tray_message(
+        self,
+        title: str,
+        message: str,
+        icon: QSystemTrayIcon.MessageIcon = QSystemTrayIcon.MessageIcon.Information,
+        duration: int = 3000,
+    ) -> None:
+        """Show a system tray notification with fallback handling.
+
+        Args:
+            title: Notification title.
+            message: Notification message.
+            icon: Notification icon type.
+            duration: Duration in milliseconds.
+        """
+        if not self.tray:
+            logger.warning("Tray icon not available for notification.")
+            return
+
+        # On Windows, ensure tray is properly shown before sending message
+        self._ensure_tray_visible_on_windows()
+
+        # Send the notification
+        self.tray.showMessage(title, message, icon, duration)
+
+        # Log the notification for debugging
+        logger.info("Notification: %s - %s", title, message)
 
     def _set_language(self, lang: str) -> None:
         """Update the output language preference."""
         self.output_language = lang
-        if self.tray:
-            self.tray.showMessage(
-                "Output Language",
-                f"Selected: {lang}",
-                QSystemTrayIcon.MessageIcon.Information,
-                1500,
-            )
+        self._show_tray_message(
+            "Output Language",
+            f"Selected: {lang}",
+            QSystemTrayIcon.MessageIcon.Information,
+            1500,
+        )
 
     def _show_settings(self) -> None:
         """Show the settings dialog."""
@@ -587,16 +648,26 @@ class Manager(QObject):
         """Show welcome dialog on first run."""
         QMessageBox.information(
             None,
-            f"Welcome to {APP_NAME}",
+            f"Welcome to {APP_DISPLAY_NAME}",
             "Please configure your GitHub Token to use this application.\n\n"
             "You can get a token from GitHub Settings > Developer settings > "
             "Personal access tokens.",
         )
         dialog = SettingsDialog()
-        if dialog.exec() != QDialog.DialogCode.Accepted and self.tray:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # User successfully configured token, show tray notification
+            self._show_tray_message(
+                APP_DISPLAY_NAME,
+                f"{APP_DISPLAY_NAME} is now running in the system tray!\n\n"
+                f"Press {HOTKEY_SHORTCUT} to capture or "
+                "right-click the tray icon for options.",
+                QSystemTrayIcon.MessageIcon.Information,
+                8000,
+            )
+        else:
             # User cancelled, show warning
-            self.tray.showMessage(
-                APP_NAME,
+            self._show_tray_message(
+                APP_DISPLAY_NAME,
                 "No token configured. Capture will not work until configured.",
                 QSystemTrayIcon.MessageIcon.Warning,
                 5000,
@@ -609,13 +680,12 @@ class Manager(QObject):
 
     def process(self, b64_data: str) -> None:
         """Process a captured screenshot through the AI pipeline."""
-        if self.tray:
-            self.tray.showMessage(
-                "Snip OCR",
-                "Image captured. Processing...",
-                QSystemTrayIcon.MessageIcon.Information,
-                2000,
-            )
+        self._show_tray_message(
+            APP_DISPLAY_NAME,
+            "Image captured. Processing...",
+            QSystemTrayIcon.MessageIcon.Information,
+            2000,
+        )
 
         if self.active_worker is not None:
             self.active_worker.cancel()
@@ -651,25 +721,23 @@ class Manager(QObject):
 
         pyperclip.copy(clean)
 
-        if self.tray:
-            self.tray.showMessage(
-                "Snip OCR",
-                "Done! Markdown copied to clipboard.",
-                QSystemTrayIcon.MessageIcon.Information,
-                2000,
-            )
+        self._show_tray_message(
+            APP_DISPLAY_NAME,
+            "Done! Markdown copied to clipboard.",
+            QSystemTrayIcon.MessageIcon.Information,
+            2000,
+        )
 
         logger.info("Copied to clipboard:\n%s", clean)
 
     def _on_error(self, err_msg: str) -> None:
         """Handle AI processing error."""
-        if self.tray:
-            self.tray.showMessage(
-                "Snip OCR Error",
-                err_msg,
-                QSystemTrayIcon.MessageIcon.Critical,
-                3000,
-            )
+        self._show_tray_message(
+            f"{APP_DISPLAY_NAME} Error",
+            err_msg,
+            QSystemTrayIcon.MessageIcon.Critical,
+            3000,
+        )
         logger.error("Critical error: %s", err_msg)
 
     def run(self) -> int:
