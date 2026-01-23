@@ -8,32 +8,28 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a release with artifacts'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            artifact_name: SnipOCR.exe
-            artifact_path: dist/SnipOCR.exe
-          - os: macos-latest
-            artifact_name: SnipOCR.app
-            artifact_path: dist/SnipOCR.app
-
-    runs-on: ${{ matrix.os }}
+  build-windows:
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -43,50 +39,127 @@ jobs:
       - name: Build executable
         run: uv run pyinstaller snip_ocr.spec --distpath dist --workpath build --noconfirm
 
-      - name: Compress macOS app
-        if: runner.os == 'macOS'
-        run: |
-          cd dist
-          zip -r SnipOCR-macOS.zip SnipOCR.app
-
-      - name: Upload Windows artifact
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+      - name: Build Windows installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.7
         with:
-          name: SnipOCR-Windows
+          path: installer.iss
+          options: /O"dist"
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: SnipOCR-Windows-Installer
+          path: dist/SnipOCR-Setup-*.exe
+
+      - name: Upload Windows executable
+        uses: actions/upload-artifact@v6
+        with:
+          name: SnipOCR-Windows-Portable
           path: dist/SnipOCR.exe
 
-      - name: Upload macOS artifact
-        if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          name: SnipOCR-macOS
-          path: dist/SnipOCR-macOS.zip
+          python-version: '3.13'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build executable
+        run: uv run pyinstaller snip_ocr.spec --distpath dist --workpath build --noconfirm
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Create DMG installer
+        run: |
+          create-dmg \
+            --volname "SnipOCR" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "SnipOCR.app" 150 190 \
+            --app-drop-link 450 185 \
+            "dist/SnipOCR-Installer.dmg" \
+            "dist/SnipOCR.app"
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v6
+        with:
+          name: SnipOCR-macOS-Installer
+          path: dist/SnipOCR-Installer.dmg
+
+      - name: Upload macOS app
+        uses: actions/upload-artifact@v6
+        with:
+          name: SnipOCR-macOS-App
+          path: dist/SnipOCR.app
 
   release:
-    needs: build
+    needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Release on: tag push, main push, or manual trigger with create_release=true
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && inputs.create_release)
     permissions:
       contents: write
 
     steps:
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v4
+      - name: Download Windows installer
+        uses: actions/download-artifact@v7
         with:
-          name: SnipOCR-Windows
+          name: SnipOCR-Windows-Installer
           path: artifacts/
 
-      - name: Download macOS artifact
-        uses: actions/download-artifact@v4
+      - name: Download Windows portable
+        uses: actions/download-artifact@v7
         with:
-          name: SnipOCR-macOS
+          name: SnipOCR-Windows-Portable
           path: artifacts/
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - name: Download macOS DMG
+        uses: actions/download-artifact@v7
+        with:
+          name: SnipOCR-macOS-Installer
+          path: artifacts/
+
+      # For tagged releases (v*)
+      - name: Create Tagged Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2.5.0
         with:
           files: |
-            artifacts/SnipOCR.exe
-            artifacts/SnipOCR-macOS.zip
+            artifacts/*
           generate_release_notes: true
+
+      # For main branch or manual trigger - update "latest" pre-release
+      - name: Create/Update Latest Release
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: softprops/action-gh-release@v2.5.0
+        with:
+          tag_name: latest
+          name: Latest Build
+          prerelease: true
+          files: |
+            artifacts/*
+          body: |
+            🚀 **Automatic build from main branch**
+            
+            This is a pre-release with the latest changes.
+            For stable releases, see the tagged versions.
+            
+            Built from commit: ${{ github.sha }}
