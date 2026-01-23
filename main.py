@@ -566,10 +566,10 @@ class Manager(QObject):
 
         self.tray.setContextMenu(menu)
         self.tray.activated.connect(self._on_tray_click)
-        
-        # Ensure tray icon is visible and notifications are supported
+
+        # Show the tray icon
         self.tray.show()
-        
+
         # On Windows, ensure notifications are not suppressed
         self._ensure_tray_visible_on_windows()
         if sys.platform == "win32":
@@ -583,7 +583,7 @@ class Manager(QObject):
 
     def _ensure_tray_visible_on_windows(self) -> None:
         """Ensure tray icon is visible on Windows platform.
-        
+
         On Windows, explicitly setting visibility can help prevent
         notification suppression issues.
         """
@@ -598,7 +598,7 @@ class Manager(QObject):
         duration: int = 3000,
     ) -> None:
         """Show a system tray notification with fallback handling.
-        
+
         Args:
             title: Notification title.
             message: Notification message.
@@ -608,13 +608,13 @@ class Manager(QObject):
         if not self.tray or not self.tray.isVisible():
             logger.warning("Tray icon not available for notification.")
             return
-            
+
         # On Windows, ensure tray is properly shown before sending message
         self._ensure_tray_visible_on_windows()
-            
+
         # Send the notification
         self.tray.showMessage(title, message, icon, duration)
-        
+
         # Log the notification for debugging
         logger.info("Notification: %s - %s", title, message)
 
