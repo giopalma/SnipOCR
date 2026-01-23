@@ -110,7 +110,7 @@ class UpdateChecker:
             True if the commit hashes differ and current is known.
         """
         if not current or current == "unknown":
-            return False
+            return bool(latest)
         return latest != current
 
     def _extract_commit_sha(self, body: str) -> str | None:
