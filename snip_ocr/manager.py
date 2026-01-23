@@ -28,6 +28,7 @@ from .constants import (
     LANGUAGE_MAP,
     SYSTEM_PROMPT_TEMPLATE,
 )
+from .icon_utils import get_icon, get_icon_path
 from .ui.settings_dialog import SettingsDialog
 from .ui.snipper import Snipper
 from .ui.update_dialog import UpdateDialog
@@ -57,6 +58,10 @@ class Manager(QObject):
         super().__init__()
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
+
+        icon = get_icon()
+        if icon:
+            self.app.setWindowIcon(icon)
 
         self.snipper = Snipper()
         self.trigger.connect(self.snipper.start)
@@ -116,16 +121,7 @@ class Manager(QObject):
         Returns:
             Path to icon.png if found, None otherwise.
         """
-        # Check if running as PyInstaller bundle
-        if getattr(sys, "frozen", False):
-            base_path = Path(sys._MEIPASS)  # type: ignore[attr-defined]
-        else:
-            base_path = Path(__file__).parent.parent
-
-        icon_path = base_path / "icon.png"
-        if icon_path.exists():
-            return icon_path
-        return None
+        return get_icon_path()
 
     def _setup_tray(self) -> None:
         """Configure the system tray icon and context menu."""
@@ -134,10 +130,8 @@ class Manager(QObject):
             return
 
         # Try to load custom icon, fallback to system default
-        icon_path = self._get_icon_path()
-        if icon_path and icon_path.exists():
-            icon = QIcon(str(icon_path))
-        else:
+        icon = get_icon()
+        if not icon:
             icon = self.app.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
 
         self.tray = QSystemTrayIcon(icon, self.app)
@@ -247,13 +241,22 @@ class Manager(QObject):
                 # Show notification
                 self._show_tray_message(
                     "Update Available",
-                    f"Version {self.update_checker.latest_version} is available.\n"
-                    "Click to download and install.",
+                    self._format_update_message(),
                     QSystemTrayIcon.MessageIcon.Information,
                     8000,
                 )
         except Exception as e:
             logger.warning(f"Failed to check for updates: {e}")
+
+    def _format_update_message(self) -> str:
+        """Format the update notification message."""
+        if self.update_checker.latest_commit:
+            commit_label = self.update_checker.latest_commit[:7]
+            return (
+                f"New build {commit_label} is available.\n"
+                "Click to download and install."
+            )
+        return "New build is available.\nClick to download and install."
 
     def _on_notification_clicked(self) -> None:
         """Handle notification click."""

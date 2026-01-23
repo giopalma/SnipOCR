@@ -11,13 +11,15 @@ from typing import TYPE_CHECKING
 
 import requests
 
-from . import __version__
+from . import __commit__
 from .constants import GITHUB_REPO_NAME, GITHUB_REPO_OWNER
 
 if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
+COMMIT_NOTE_PREFIX = "Built from commit:"
+SHA1_HEX_LENGTH = 40
 
 
 class UpdateChecker:
@@ -25,8 +27,9 @@ class UpdateChecker:
 
     def __init__(self) -> None:
         """Initialize the update checker."""
-        self.current_version = __version__
+        self.current_commit = __commit__
         self.latest_version: str | None = None
+        self.latest_commit: str | None = None
         self.download_url: str | None = None
         self.release_notes: str | None = None
 
@@ -64,7 +67,15 @@ class UpdateChecker:
                 release_data = response.json()
             
             self.latest_version = release_data.get("tag_name", "").lstrip("v")
-            self.release_notes = release_data.get("body", "")
+            self.release_notes = release_data.get("body") or ""
+            self.latest_commit = self._extract_commit_sha(self.release_notes)
+            if not self.latest_commit:
+                target_commitish = release_data.get("target_commitish")
+                self.latest_commit = self._extract_commit_sha_from_target(
+                    target_commitish
+                )
+                if not self.latest_commit:
+                    self.latest_commit = self._fetch_commit_sha(target_commitish)
 
             # Find the appropriate asset for the current platform
             assets = release_data.get("assets", [])
@@ -76,17 +87,17 @@ class UpdateChecker:
                     self.download_url = asset.get("browser_download_url")
                     break
 
-            # Compare versions
-            if self.latest_version and self._is_newer_version(
-                self.latest_version, self.current_version
+            # Compare commits
+            if self.latest_commit and self._is_newer_commit(
+                self.latest_commit, self.current_commit
             ):
                 logger.info(
-                    f"Update available: {self.current_version} -> {self.latest_version}"
+                    "Update available: %s -> %s", self.current_commit, self.latest_commit
                 )
                 return True
 
             logger.info(
-                f"No updates available. Current version: {self.current_version}"
+                "No updates available. Current commit: %s", self.current_commit
             )
             return False
 
@@ -97,29 +108,60 @@ class UpdateChecker:
             logger.warning(f"Failed to check for updates: {e}")
             return False
 
-    def _is_newer_version(self, latest: str, current: str) -> bool:
-        """Compare version strings.
+    def _is_newer_commit(self, latest: str, current: str) -> bool:
+        """Compare commit hashes.
 
         Args:
-            latest: Latest version string (e.g., "0.2.0").
-            current: Current version string (e.g., "0.1.0").
+            latest: Latest commit hash (e.g., "f8f53f1...").
+            current: Current commit hash (e.g., "a1b2c3d...").
 
         Returns:
-            True if latest is newer than current.
+            True if the commit hashes differ or current is unknown.
         """
-        try:
-            # Simple version comparison for semver
-            latest_parts = [int(x) for x in latest.split(".")]
-            current_parts = [int(x) for x in current.split(".")]
+        if not current or current == "unknown":
+            logger.info("Current commit unknown; treating latest as update.")
+            return bool(latest)
+        return latest != current
 
-            # Pad to same length
-            max_len = max(len(latest_parts), len(current_parts))
-            latest_parts += [0] * (max_len - len(latest_parts))
-            current_parts += [0] * (max_len - len(current_parts))
+    def _extract_commit_sha(self, body: str | None) -> str | None:
+        """Extract commit hash from release notes."""
+        if not body:
+            return None
+        for line in body.splitlines():
+            if COMMIT_NOTE_PREFIX in line:
+                result = line.split(COMMIT_NOTE_PREFIX, 1)[1].strip()
+                return result if self._is_valid_sha(result) else None
+        return None
 
-            return latest_parts > current_parts
-        except (ValueError, AttributeError):
+    def _extract_commit_sha_from_target(self, target: object) -> str | None:
+        """Extract commit hash from target_commitish when it looks like a SHA."""
+        if isinstance(target, str) and self._is_valid_sha(target):
+            return target
+        return None
+
+    def _is_valid_sha(self, value: str | None) -> bool:
+        """Return True when value looks like a full SHA-1 hash."""
+        if not value or len(value) != SHA1_HEX_LENGTH:
             return False
+        return all(ch in "0123456789abcdef" for ch in value.lower())
+
+    def _fetch_commit_sha(self, target: object) -> str | None:
+        """Fetch the commit SHA for a branch or tag."""
+        if not isinstance(target, str) or not target:
+            return None
+        try:
+            url = (
+                f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/"
+                f"{GITHUB_REPO_NAME}/commits/{target}"
+            )
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            sha = data.get("sha")
+            return sha if isinstance(sha, str) and sha else None
+        except requests.exceptions.RequestException as e:
+            logger.warning("Failed to resolve commit target %s: %s", target, e)
+            return None
 
     def download_update(self, progress_callback=None) -> Path | None:
         """Download the update file.

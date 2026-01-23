@@ -6,3 +6,4 @@ to Markdown using AI-powered OCR with LaTeX support.
 """
 
 __version__ = "0.1.0"
+__commit__ = "unknown"
