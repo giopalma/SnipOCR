@@ -67,6 +67,10 @@ class UpdateChecker:
             self.latest_version = release_data.get("tag_name", "").lstrip("v")
             self.release_notes = release_data.get("body") or ""
             self.latest_commit = self._extract_commit_sha(self.release_notes)
+            if not self.latest_commit:
+                self.latest_commit = self._extract_commit_sha_from_target(
+                    release_data.get("target_commitish")
+                )
 
             # Find the appropriate asset for the current platform
             assets = release_data.get("assets", [])
@@ -107,9 +111,10 @@ class UpdateChecker:
             current: Current commit hash (e.g., "a1b2c3d...").
 
         Returns:
-            True if the commit hashes differ and current is known.
+            True if the commit hashes differ or current is unknown.
         """
         if not current or current == "unknown":
+            logger.info("Current commit unknown; treating latest as update.")
             return bool(latest)
         return latest != current
 
@@ -119,6 +124,14 @@ class UpdateChecker:
             if "Built from commit:" in line:
                 result = line.split("Built from commit:", 1)[1].strip()
                 return result if result else None
+        return None
+
+    def _extract_commit_sha_from_target(self, target: object) -> str | None:
+        """Extract commit hash from target_commitish when it looks like a SHA."""
+        if isinstance(target, str) and len(target) >= 7 and all(
+            ch in "0123456789abcdef" for ch in target.lower()
+        ):
+            return target
         return None
 
     def download_update(self, progress_callback=None) -> Path | None:
