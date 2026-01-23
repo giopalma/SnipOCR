@@ -17,6 +17,7 @@ Capture any region of your screen with a hotkey, and instantly get clean Markdow
 - 🤖 **Model Selection** — Choose between GPT-4o and GPT-4o-mini
 - 📋 **Clipboard Ready** — Markdown copied instantly, ready to paste
 - 🖥️ **System Tray** — Runs quietly in the background
+- 🔄 **Auto-Update** — Automatic update notifications and one-click updates
 
 ## 🚀 Installation
 
@@ -55,6 +56,14 @@ Right-click the tray icon to access:
 - 🤖 **Model** — Choose GPT-4o or GPT-4o-mini
 - ⚙️ **Settings** — Update your GitHub Token
 
+### Updates
+
+The app automatically checks for updates on startup. When a new version is available:
+- You'll receive a notification that you can click to download
+- An "Update Available" option appears in the system tray menu
+- Updates are downloaded and installed with a single click
+- You can choose to install immediately or continue using the current version
+
 ## 🛠️ Development
 
 For contributors who want to run from source:
@@ -72,6 +81,8 @@ uv run main.py
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+
+For information about the project architecture, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 🤝 Contributing
 
