@@ -55,6 +55,7 @@ import os
 # --- Configuration ---
 APP_NAME = "SnipOCR"
 ENDPOINT: str = "https://models.inference.ai.azure.com/chat/completions"
+HOTKEY_SHORTCUT = "Ctrl+Shift+S"
 
 
 def get_config_path() -> Path:
@@ -489,7 +490,7 @@ class Manager(QObject):
         if not GITHUB_TOKEN:
             self._show_first_run_dialog()
 
-        logger.info("Snip OCR started. Press Ctrl+Shift+S to capture.")
+        logger.info("Snip OCR started. Press %s to capture.", HOTKEY_SHORTCUT)
 
     def _get_icon_path(self) -> Path | None:
         """Get the path to the application icon.
@@ -528,7 +529,7 @@ class Manager(QObject):
             icon = self.app.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
 
         self.tray = QSystemTrayIcon(icon, self.app)
-        self.tray.setToolTip("Snip OCR - Ctrl+Shift+S")
+        self.tray.setToolTip(f"Snip OCR - {HOTKEY_SHORTCUT}")
 
         menu = QMenu()
 
@@ -570,8 +571,8 @@ class Manager(QObject):
         self.tray.show()
         
         # On Windows, ensure notifications are not suppressed
+        self._ensure_tray_visible_on_windows()
         if sys.platform == "win32":
-            self.tray.setVisible(True)
             # Make sure the message balloon is supported
             if self.tray.supportsMessages():
                 logger.info("System tray notifications are supported.")
@@ -579,6 +580,15 @@ class Manager(QObject):
                 logger.warning(
                     "System tray notifications may not be supported on this system."
                 )
+
+    def _ensure_tray_visible_on_windows(self) -> None:
+        """Ensure tray icon is visible on Windows platform.
+        
+        On Windows, explicitly setting visibility can help prevent
+        notification suppression issues.
+        """
+        if sys.platform == "win32" and self.tray:
+            self.tray.setVisible(True)
 
     def _show_tray_message(
         self,
@@ -600,8 +610,7 @@ class Manager(QObject):
             return
             
         # On Windows, ensure tray is properly shown before sending message
-        if sys.platform == "win32":
-            self.tray.setVisible(True)
+        self._ensure_tray_visible_on_windows()
             
         # Send the notification
         self.tray.showMessage(title, message, icon, duration)
@@ -639,7 +648,7 @@ class Manager(QObject):
             self._show_tray_message(
                 APP_NAME,
                 f"{APP_NAME} is now running in the system tray!\n\n"
-                "Press Ctrl+Shift+S to capture or "
+                f"Press {HOTKEY_SHORTCUT} to capture or "
                 "right-click the tray icon for options.",
                 QSystemTrayIcon.MessageIcon.Information,
                 8000,
