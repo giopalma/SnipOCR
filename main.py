@@ -570,9 +570,17 @@ class Manager(QObject):
         # Show the tray icon
         self.tray.show()
 
-        # On Windows, ensure notifications are not suppressed
+        # On Windows, ensure notifications are not suppressed and check support
         self._ensure_tray_visible_on_windows()
-        if sys.platform == "win32":
+
+    def _ensure_tray_visible_on_windows(self) -> None:
+        """Ensure tray icon is visible on Windows platform.
+
+        On Windows, explicitly setting visibility can help prevent
+        notification suppression issues. Also logs notification support status.
+        """
+        if sys.platform == "win32" and self.tray:
+            self.tray.setVisible(True)
             # Make sure the message balloon is supported
             if self.tray.supportsMessages():
                 logger.info("System tray notifications are supported.")
@@ -580,15 +588,6 @@ class Manager(QObject):
                 logger.warning(
                     "System tray notifications may not be supported on this system."
                 )
-
-    def _ensure_tray_visible_on_windows(self) -> None:
-        """Ensure tray icon is visible on Windows platform.
-
-        On Windows, explicitly setting visibility can help prevent
-        notification suppression issues.
-        """
-        if sys.platform == "win32" and self.tray:
-            self.tray.setVisible(True)
 
     def _show_tray_message(
         self,
@@ -605,7 +604,7 @@ class Manager(QObject):
             icon: Notification icon type.
             duration: Duration in milliseconds.
         """
-        if not self.tray or not self.tray.isVisible():
+        if not self.tray:
             logger.warning("Tray icon not available for notification.")
             return
 
