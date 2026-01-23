@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -150,19 +151,17 @@ class UpdateChecker:
         """
         try:
             if sys.platform == "win32":
-                # On Windows, launch the installer
-                import subprocess
-
-                subprocess.Popen([str(update_file)], shell=True)
+                # On Windows, launch the installer without shell=True for security
+                subprocess.Popen([str(update_file)])
                 return True
             elif sys.platform == "darwin":
                 # On macOS, open the DMG
-                import subprocess
-
                 subprocess.Popen(["open", str(update_file)])
                 return True
             else:
-                logger.warning(f"Auto-update not supported on platform: {sys.platform}")
+                logger.warning(
+                    f"Auto-update not supported on platform: {sys.platform}"
+                )
                 return False
         except Exception as e:
             logger.error(f"Failed to install update: {e}")
