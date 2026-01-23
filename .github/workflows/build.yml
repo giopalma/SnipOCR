@@ -43,7 +43,6 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.7
         with:
           path: installer.iss
-          options: /O"dist"
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v6
