@@ -97,8 +97,7 @@ class Manager(QObject):
             # Show startup notification for subsequent runs
             self._show_tray_message(
                 APP_DISPLAY_NAME,
-                f"{APP_DISPLAY_NAME} is ready!\n"
-                f"Press {HOTKEY_SHORTCUT} to capture.",
+                f"{APP_DISPLAY_NAME} is ready!\nPress {HOTKEY_SHORTCUT} to capture.",
                 QSystemTrayIcon.MessageIcon.Information,
                 3000,
             )
@@ -244,7 +243,7 @@ class Manager(QObject):
                 self.update_available = True
                 if self.update_action:
                     self.update_action.setVisible(True)
-                
+
                 # Show notification
                 self._show_tray_message(
                     "Update Available",
@@ -265,7 +264,7 @@ class Manager(QObject):
         """Show the update download and installation dialog."""
         if not self.update_available:
             return
-        
+
         dialog = UpdateDialog(self.update_checker)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # User chose to install now
@@ -314,7 +313,7 @@ class Manager(QObject):
             self.github_token = dialog.get_token()
             self.selected_model = dialog.get_model()
             self.model_config["model"] = self.selected_model
-            
+
             # User successfully configured token, show tray notification
             self._show_tray_message(
                 APP_DISPLAY_NAME,

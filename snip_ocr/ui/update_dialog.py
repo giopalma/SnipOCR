@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import QObject, QThread, Qt, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -128,7 +128,7 @@ class UpdateDialog(QDialog):
         if total > 0:
             percentage = int((downloaded / total) * 100)
             self.progress_bar.setValue(percentage)
-            
+
             # Format sizes in MB
             downloaded_mb = downloaded / (1024 * 1024)
             total_mb = total / (1024 * 1024)
@@ -146,16 +146,16 @@ class UpdateDialog(QDialog):
             self.update_file = update_file
             self.info_label.setText("Download complete!")
             self.status_label.setText("Ready to install update.")
-            
+
             # Replace Cancel with Install button
             self.buttons.clear()
-            install_btn = self.buttons.addButton(
+            self.buttons.addButton(
                 "Install Now", QDialogButtonBox.ButtonRole.AcceptRole
             )
-            cancel_btn = self.buttons.addButton(
+            self.buttons.addButton(
                 "Install Later", QDialogButtonBox.ButtonRole.RejectRole
             )
-            
+
             self.buttons.accepted.connect(self._install_update)
             self.buttons.rejected.connect(self.reject)
         else:
