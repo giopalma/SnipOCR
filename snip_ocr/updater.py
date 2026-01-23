@@ -71,6 +71,16 @@ class UpdateChecker:
             )
             return False
 
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                # No releases published yet - this is normal for new repositories
+                logger.info(
+                    "No releases found in repository. Update checking will work "
+                    "once the first release is published."
+                )
+            else:
+                logger.warning(f"Failed to check for updates: {e}")
+            return False
         except Exception as e:
             logger.warning(f"Failed to check for updates: {e}")
             return False
