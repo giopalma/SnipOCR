@@ -123,8 +123,10 @@ class UpdateChecker:
             return bool(latest)
         return latest != current
 
-    def _extract_commit_sha(self, body: str) -> str | None:
+    def _extract_commit_sha(self, body: str | None) -> str | None:
         """Extract commit hash from release notes."""
+        if not body:
+            return None
         for line in body.splitlines():
             if COMMIT_NOTE_PREFIX in line:
                 result = line.split(COMMIT_NOTE_PREFIX, 1)[1].strip()
@@ -137,9 +139,9 @@ class UpdateChecker:
             return target
         return None
 
-    def _is_valid_sha(self, value: str) -> bool:
+    def _is_valid_sha(self, value: str | None) -> bool:
         """Return True when value looks like a full SHA-1 hash."""
-        if len(value) != SHA1_HEX_LENGTH:
+        if not value or len(value) != SHA1_HEX_LENGTH:
             return False
         return all(ch in "0123456789abcdef" for ch in value.lower())
 
