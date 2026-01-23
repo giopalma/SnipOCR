@@ -37,13 +37,32 @@ class UpdateChecker:
             True if an update is available, False otherwise.
         """
         try:
-            # GitHub API endpoint for latest release
+            # Try to get the latest non-prerelease first
             url = f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/releases/latest"
 
             response = requests.get(url, timeout=10)
-            response.raise_for_status()
-
-            release_data = response.json()
+            
+            # If /latest returns 404, it might be because only prereleases exist
+            # Try to get the first release from the list instead
+            if response.status_code == 404:
+                url = f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/releases"
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+                releases = response.json()
+                
+                if not releases:
+                    logger.info(
+                        "No releases found in repository. Update checking will work "
+                        "once the first release is published."
+                    )
+                    return False
+                
+                # Get the first release (most recent)
+                release_data = releases[0]
+            else:
+                response.raise_for_status()
+                release_data = response.json()
+            
             self.latest_version = release_data.get("tag_name", "").lstrip("v")
             self.release_notes = release_data.get("body", "")
 
@@ -72,14 +91,7 @@ class UpdateChecker:
             return False
 
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                # No releases published yet - this is normal for new repositories
-                logger.info(
-                    "No releases found in repository. Update checking will work "
-                    "once the first release is published."
-                )
-            else:
-                logger.warning(f"Failed to check for updates: {e}")
+            logger.warning(f"Failed to check for updates: {e}")
             return False
         except Exception as e:
             logger.warning(f"Failed to check for updates: {e}")
