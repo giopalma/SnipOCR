@@ -491,7 +491,9 @@ class Manager(QObject):
         if not GITHUB_TOKEN:
             self._show_first_run_dialog()
 
-        logger.info("Snip OCR started. Press %s to capture.", HOTKEY_SHORTCUT)
+        logger.info(
+            "%s started. Press %s to capture.", APP_DISPLAY_NAME, HOTKEY_SHORTCUT
+        )
 
     def _get_icon_path(self) -> Path | None:
         """Get the path to the application icon.
@@ -530,7 +532,7 @@ class Manager(QObject):
             icon = self.app.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
 
         self.tray = QSystemTrayIcon(icon, self.app)
-        self.tray.setToolTip(f"Snip OCR - {HOTKEY_SHORTCUT}")
+        self.tray.setToolTip(f"{APP_DISPLAY_NAME} - {HOTKEY_SHORTCUT}")
 
         menu = QMenu()
 
