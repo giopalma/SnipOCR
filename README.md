@@ -34,7 +34,7 @@ Download the latest release for your platform:
 On first launch, the app will ask you to configure your **GitHub Token**:
 
 1. Go to [GitHub Personal Access Tokens](https://github.com/settings/personal-access-tokens/new)
-2. Create a new token (no special permissions needed)
+2. Create a new token with read-only access to **Models**
 3. Paste it into the Settings dialog
 
 That's it! Your token is saved securely and you won't need to configure it again.
