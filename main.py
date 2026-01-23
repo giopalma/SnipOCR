@@ -372,8 +372,17 @@ class Snipper(QWidget):
 
     def start(self) -> None:
         """Show the overlay and prepare for capture."""
-        geo = QGuiApplication.primaryScreen().virtualGeometry()
-        self.setGeometry(geo)
+        primary = QGuiApplication.primaryScreen()
+        if not primary:
+            return
+
+        # Use virtualGeometry which should span all screens
+        virtual_geo = primary.virtualGeometry()
+
+        # Force the widget size using setFixedSize + move
+        self.setFixedSize(virtual_geo.width(), virtual_geo.height())
+        self.move(virtual_geo.x(), virtual_geo.y())
+
         self.show()
         self.raise_()
         self.activateWindow()
@@ -670,6 +679,12 @@ class Manager(QObject):
 
 def main() -> None:
     """Application entry point."""
+    # Disable Qt's High DPI scaling to ensure 1:1 pixel mapping
+    # This prevents coordinate mismatches on multi-monitor setups with different scaling
+    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "0"
+    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+    os.environ["QT_SCALE_FACTOR"] = "1"
+
     sys.exit(Manager().run())
 
 
