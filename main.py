@@ -490,6 +490,15 @@ class Manager(QObject):
         # Show settings dialog on first run if no token configured
         if not GITHUB_TOKEN:
             self._show_first_run_dialog()
+        else:
+            # Show startup notification for subsequent runs
+            self._show_tray_message(
+                APP_DISPLAY_NAME,
+                f"{APP_DISPLAY_NAME} is ready!\n"
+                f"Press {HOTKEY_SHORTCUT} to capture.",
+                QSystemTrayIcon.MessageIcon.Information,
+                3000,
+            )
 
         logger.info(
             "%s started. Press %s to capture.", APP_DISPLAY_NAME, HOTKEY_SHORTCUT
