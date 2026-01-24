@@ -15,21 +15,41 @@ HOTKEY_SHORTCUT = "Ctrl+Shift+S"
 # Available models
 AVAILABLE_MODELS = ["gpt-4o", "gpt-4o-mini"]
 
+# Output formats
+OUTPUT_FORMATS = ["Markdown", "Word/Google Docs"]
+DEFAULT_OUTPUT_FORMAT = OUTPUT_FORMATS[0]
+
 # Language mapping
 LANGUAGE_MAP: dict[str, str] = {
     "Italiano": "Italian",
     "English": "English",
 }
 
-# System prompt template
-SYSTEM_PROMPT_TEMPLATE: str = (
-    "You are a scientific transcriber. "
-    "Analyze the image and convert it to faithful Markdown. "
-    "Preserve headings, lists, and tables. "
-    "MANDATORY: use $...$ for inline LaTeX and $$...$$ for blocks. "
-    "Detect the original language of the text. "
-    "If the image language does NOT match the requested output language, "
-    "translate accurately to the requested language. "
-    "Return ONLY the Markdown content, without preambles or code blocks. "
-    "Requested output language: {target_language}."
-)
+# System prompt templates
+SYSTEM_PROMPT_TEMPLATES: dict[str, str] = {
+    "Markdown": (
+        "You are a scientific transcriber. "
+        "Analyze the image and convert it to faithful Markdown. "
+        "Preserve headings, lists, and tables. "
+        "MANDATORY: use $...$ for inline LaTeX and $$...$$ for blocks. "
+        "Detect the original language of the text. "
+        "If the image language does NOT match the requested output language, "
+        "translate accurately to the requested language. "
+        "Return ONLY the Markdown content, without preambles or code blocks. "
+        "Requested output language: {target_language}."
+    ),
+    "Word/Google Docs": (
+        "You are a scientific transcriber. "
+        "Analyze the image and convert it to clean HTML for Microsoft Word or "
+        "Google Docs. "
+        "Preserve headings, lists, and tables with semantic HTML tags "
+        "(p, h1-h6, ul, ol, table, thead, tbody, tr, th, td). "
+        "MANDATORY: use MathML for formulas "
+        "(inline <math>...</math>, block <math display=\"block\">...</math>). "
+        "Detect the original language of the text. "
+        "If the image language does NOT match the requested output language, "
+        "translate accurately to the requested language. "
+        "Return ONLY the HTML fragment, without preambles or code blocks. "
+        "Requested output language: {target_language}."
+    ),
+}

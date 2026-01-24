@@ -15,7 +15,7 @@ Capture any region of your screen with a hotkey, and instantly get clean Markdow
 - 📐 **LaTeX Support** — Automatic `$...$` inline and `$$...$$` block formatting
 - 🌍 **Multi-language** — Output in Italian or English (auto-translates if needed)
 - 🤖 **Model Selection** — Choose between GPT-4o and GPT-4o-mini
-- 📋 **Clipboard Ready** — Markdown copied instantly, ready to paste
+- 📋 **Clipboard Ready** — Markdown or Word/Docs-ready HTML copied instantly
 - 🖥️ **System Tray** — Runs quietly in the background
 - 🔄 **Auto-Update** — Automatic update notifications and one-click updates
 
@@ -54,6 +54,7 @@ Right-click the tray icon to access:
 
 - 🌍 **Language** — Switch between Italian and English output
 - 🤖 **Model** — Choose GPT-4o or GPT-4o-mini
+- 📄 **Output Format** — Pick Markdown or Word/Google Docs HTML
 - ⚙️ **Settings** — Update your GitHub Token
 
 ### Updates

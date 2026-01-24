@@ -15,8 +15,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ..config import load_model, load_token, save_config
-from ..constants import APP_DISPLAY_NAME, AVAILABLE_MODELS
+from ..config import load_model, load_output_format, load_token, save_config
+from ..constants import (
+    APP_DISPLAY_NAME,
+    AVAILABLE_MODELS,
+    OUTPUT_FORMATS,
+)
 from ..icon_utils import get_icon
 
 if TYPE_CHECKING:
@@ -66,6 +70,15 @@ class SettingsDialog(QDialog):
 
         layout.addRow("Model:", self.model_combo)
 
+        # Output format selection dropdown
+        self.output_format_combo = QComboBox()
+        self.output_format_combo.addItems(OUTPUT_FORMATS)
+        current_format = load_output_format()
+        if current_format in OUTPUT_FORMATS:
+            self.output_format_combo.setCurrentText(current_format)
+
+        layout.addRow("Output Format:", self.output_format_combo)
+
         # Buttons
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
@@ -87,8 +100,9 @@ class SettingsDialog(QDialog):
             return
 
         model = self.model_combo.currentText()
+        output_format = self.output_format_combo.currentText()
 
-        if save_config(token=token, model=model):
+        if save_config(token=token, model=model, output_format=output_format):
             self.accept()
         else:
             QMessageBox.critical(
@@ -112,3 +126,11 @@ class SettingsDialog(QDialog):
             The model name.
         """
         return self.model_combo.currentText()
+
+    def get_output_format(self) -> str:
+        """Get the selected output format.
+
+        Returns:
+            The output format.
+        """
+        return self.output_format_combo.currentText()

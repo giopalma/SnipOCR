@@ -8,7 +8,7 @@ import os
 import sys
 from pathlib import Path
 
-from .constants import APP_NAME
+from .constants import APP_NAME, DEFAULT_OUTPUT_FORMAT
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,11 @@ def load_token() -> str | None:
     return None
 
 
-def save_config(token: str | None = None, model: str | None = None) -> bool:
+def save_config(
+    token: str | None = None,
+    model: str | None = None,
+    output_format: str | None = None,
+) -> bool:
     """Save configuration to config file.
 
     Args:
@@ -65,6 +69,8 @@ def save_config(token: str | None = None, model: str | None = None) -> bool:
             data["github_token"] = token
         if model is not None:
             data["model"] = model
+        if output_format is not None:
+            data["output_format"] = output_format
         with config_file.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
         return True
@@ -87,3 +93,20 @@ def load_model() -> str:
         except (json.JSONDecodeError, OSError):
             pass
     return "gpt-4o"
+
+
+def load_output_format() -> str:
+    """Load the output format choice from config file.
+
+    Returns:
+        The output format, defaults to DEFAULT_OUTPUT_FORMAT.
+    """
+    config_file = get_config_path() / "config.json"
+    if config_file.exists():
+        try:
+            with config_file.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("output_format", DEFAULT_OUTPUT_FORMAT)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return DEFAULT_OUTPUT_FORMAT

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import pyperclip
 from pynput import keyboard
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
-from PyQt6.QtGui import QAction, QActionGroup, QIcon
+from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -20,13 +20,14 @@ from PyQt6.QtWidgets import (
     QSystemTrayIcon,
 )
 
-from .config import load_model, load_token
+from .config import load_model, load_output_format, load_token
 from .constants import (
     APP_DISPLAY_NAME,
     ENDPOINT,
     HOTKEY_SHORTCUT,
     LANGUAGE_MAP,
-    SYSTEM_PROMPT_TEMPLATE,
+    OUTPUT_FORMATS,
+    SYSTEM_PROMPT_TEMPLATES,
 )
 from .icon_utils import get_icon, get_icon_path
 from .ui.settings_dialog import SettingsDialog
@@ -72,6 +73,7 @@ class Manager(QObject):
         self.tray: QSystemTrayIcon | None = None
 
         self.output_language = "Italiano"
+        self.output_format = load_output_format()
 
         # Load configuration
         self.github_token = load_token()
@@ -282,6 +284,14 @@ class Manager(QObject):
             # Quit the application
             self.app.quit()
 
+    def _get_output_format(self) -> str:
+        """Return the selected output format with fallback."""
+        return (
+            self.output_format
+            if self.output_format in OUTPUT_FORMATS
+            else OUTPUT_FORMATS[0]
+        )
+
     def _set_language(self, lang: str) -> None:
         """Update the output language preference."""
         self.output_language = lang
@@ -300,6 +310,7 @@ class Manager(QObject):
             self.github_token = dialog.get_token()
             self.selected_model = dialog.get_model()
             self.model_config["model"] = self.selected_model
+            self.output_format = dialog.get_output_format()
 
     def _show_first_run_dialog(self) -> None:
         """Show welcome dialog on first run."""
@@ -316,6 +327,7 @@ class Manager(QObject):
             self.github_token = dialog.get_token()
             self.selected_model = dialog.get_model()
             self.model_config["model"] = self.selected_model
+            self.output_format = dialog.get_output_format()
 
             # User successfully configured token, show tray notification
             self._show_tray_message(
@@ -353,7 +365,10 @@ class Manager(QObject):
             self.active_worker.cancel()
 
         target_language = LANGUAGE_MAP.get(self.output_language, "Italian")
-        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(target_language=target_language)
+        output_format = self._get_output_format()
+        system_prompt = SYSTEM_PROMPT_TEMPLATES[output_format].format(
+            target_language=target_language
+        )
 
         self.active_thread = QThread()
         self.active_worker = AIWorker(
@@ -391,9 +406,10 @@ class Manager(QObject):
 
         pyperclip.copy(clean)
 
+        output_format = self._get_output_format()
         self._show_tray_message(
             APP_DISPLAY_NAME,
-            "Done! Markdown copied to clipboard.",
+            f"Done! {output_format} copied to clipboard.",
             QSystemTrayIcon.MessageIcon.Information,
             2000,
         )
