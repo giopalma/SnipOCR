@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import pyperclip
 from pynput import keyboard
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtCore import QMimeData, QObject, QThread, pyqtSignal
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import (
     QApplication,
@@ -292,86 +292,14 @@ class Manager(QObject):
             else OUTPUT_FORMATS[0]
         )
 
-    def _build_html_clipboard_payload(self, html_fragment: str) -> bytes:
-        """Build the HTML clipboard payload according to CF_HTML spec."""
-        prefix = b"<!DOCTYPE html><html><body><!--StartFragment-->"
-        suffix = b"<!--EndFragment--></body></html>"
-        fragment_bytes = html_fragment.encode("utf-8")
-        html_bytes = prefix + fragment_bytes + suffix
-        header_template = (
-            "Version:0.9\r\n"
-            "StartHTML:{start_html:08d}\r\n"
-            "EndHTML:{end_html:08d}\r\n"
-            "StartFragment:{start_fragment:08d}\r\n"
-            "EndFragment:{end_fragment:08d}\r\n"
-            "StartSelection:{start_fragment:08d}\r\n"
-            "EndSelection:{end_fragment:08d}\r\n"
-        )
-        header = header_template.format(
-            start_html=0,
-            end_html=0,
-            start_fragment=0,
-            end_fragment=0,
-        )
-        start_html = len(header.encode("ascii"))
-        start_fragment = start_html + len(prefix)
-        end_fragment = start_fragment + len(fragment_bytes)
-        end_html = start_html + len(html_bytes)
-        header = header_template.format(
-            start_html=start_html,
-            end_html=end_html,
-            start_fragment=start_fragment,
-            end_fragment=end_fragment,
-        )
-        return header.encode("ascii") + html_bytes
-
     def _copy_html_to_clipboard(self, html_fragment: str) -> bool:
-        """Copy HTML fragment to the Windows clipboard with CF_HTML."""
-        if sys.platform != "win32":
-            return False
+        """Copy HTML fragment to clipboard via Qt."""
         try:
-            import ctypes
-
-            user32 = ctypes.windll.user32
-            kernel32 = ctypes.windll.kernel32
-
-            if not user32.OpenClipboard(None):
-                return False
-            try:
-                if not user32.EmptyClipboard():
-                    return False
-
-                html_data = self._build_html_clipboard_payload(html_fragment)
-                text_data = html_fragment.encode("utf-16-le") + b"\0\0"
-
-                html_format = user32.RegisterClipboardFormatW("HTML Format")
-                cf_unicode_text = 13
-                gmem_moveable = 0x0002
-                gmem_zeroinit = 0x0040
-                alloc_flags = gmem_moveable | gmem_zeroinit
-
-                def set_clipboard_data(fmt: int, data: bytes) -> bool:
-                    hglobal = kernel32.GlobalAlloc(alloc_flags, len(data))
-                    if not hglobal:
-                        return False
-                    locked = kernel32.GlobalLock(hglobal)
-                    if not locked:
-                        kernel32.GlobalFree(hglobal)
-                        return False
-                    ctypes.memmove(locked, data, len(data))
-                    kernel32.GlobalUnlock(hglobal)
-                    if not user32.SetClipboardData(fmt, hglobal):
-                        kernel32.GlobalFree(hglobal)
-                        return False
-                    return True
-
-                if html_format == 0:
-                    return False
-                if not set_clipboard_data(html_format, html_data):
-                    return False
-                return set_clipboard_data(cf_unicode_text, text_data)
-            finally:
-                user32.CloseClipboard()
+            mime_data = QMimeData()
+            mime_data.setHtml(html_fragment)
+            mime_data.setText(html_fragment)
+            self.app.clipboard().setMimeData(mime_data)
+            return True
         except Exception:
             logger.exception("Failed to set HTML clipboard data.")
             return False
