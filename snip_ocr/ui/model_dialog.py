@@ -105,12 +105,12 @@ class ModelDialog(QDialog):
         # Info label
         info_label = QLabel(
             "Local OCR models enable offline text recognition.\n"
-            "Download size: ~150-200 MB\n\n"
+            "Download size: ~150 MB (auto-downloaded on first use)\n\n"
             "Models include:\n"
             "• Text detection and recognition\n"
-            "• Table structure analysis\n"
-            "• Mathematical formula support\n"
-            "• Multi-language support"
+            "• Multi-language support\n"
+            "• Automatic angle correction\n\n"
+            "Click 'Download Models' to initialize and verify the models."
         )
         info_label.setWordWrap(True)
         info_label.setStyleSheet("color: gray; font-size: 10pt;")
@@ -150,7 +150,7 @@ class ModelDialog(QDialog):
         reply = QMessageBox.question(
             self,
             "Download Models",
-            "This will download ~150-200 MB of OCR models.\n"
+            "This will initialize PaddleOCR and download ~150 MB of models.\n"
             "Do you want to continue?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )

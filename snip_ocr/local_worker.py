@@ -84,9 +84,9 @@ class LocalOCRWorker(QObject):
         """Initialize PaddleOCR with appropriate hardware backend.
 
         Returns:
-            Tuple of (ocr_engine, structure_engine) or raises exception.
+            Tuple of (ocr_engine, structure_engine, formula_engine) or raises exception.
         """
-        from paddleocr import PaddleOCR, PPStructure
+        from paddleocr import PaddleOCR
         
         models_path = get_models_path()
         hardware = self._detect_hardware()
@@ -97,53 +97,32 @@ class LocalOCRWorker(QObject):
         
         use_gpu = hardware in ("gpu", "xpu")
         
-        # Configure OCR engine
+        # Configure OCR engine - use online models initially
+        # Models will be auto-downloaded to default cache location
         ocr_kwargs = {
             "use_angle_cls": True,
             "lang": "en",  # English models work well for multilingual content
             "use_gpu": use_gpu,
             "show_log": False,
-            "det_model_dir": str(models_path / "det"),
-            "rec_model_dir": str(models_path / "rec"),
-            "cls_model_dir": str(models_path / "cls"),
-        }
-        
-        # Configure structure analysis engine (for tables)
-        structure_kwargs = {
-            "use_gpu": use_gpu,
-            "show_log": False,
-            "table_model_dir": str(models_path / "structure"),
         }
         
         try:
             ocr = PaddleOCR(**ocr_kwargs)
-            structure = PPStructure(**structure_kwargs)
-            return ocr, structure
+            return ocr
         except Exception as e:
             logger.error(f"Failed to initialize PaddleOCR: {e}")
             raise
 
-    def _convert_to_markdown(self, ocr_result: list, structure_result: list) -> str:
-        """Convert OCR and structure results to Markdown format.
+    def _convert_to_markdown(self, ocr_result: list) -> str:
+        """Convert OCR results to Markdown format.
 
         Args:
             ocr_result: Text detection and recognition results.
-            structure_result: Table and layout analysis results.
 
         Returns:
             Formatted Markdown string with LaTeX for formulas.
         """
         markdown_lines = []
-        
-        # Process structure results first (tables, etc.)
-        if structure_result:
-            for item in structure_result:
-                if item.get("type") == "table":
-                    # Extract table HTML and convert to markdown
-                    table_html = item.get("res", {}).get("html", "")
-                    if table_html:
-                        markdown_lines.append(self._html_table_to_markdown(table_html))
-                        markdown_lines.append("")
         
         # Process OCR text results
         if ocr_result:
@@ -198,68 +177,6 @@ class LocalOCRWorker(QObject):
             # Inline math for shorter expressions
             return f"${text.strip()}$"
 
-    def _html_table_to_markdown(self, html: str) -> str:
-        """Convert HTML table to Markdown table format.
-
-        Args:
-            html: HTML table string.
-
-        Returns:
-            Markdown table string.
-        """
-        # Basic HTML to Markdown table conversion
-        # This is a simplified version; for production, consider using a library
-        try:
-            from html.parser import HTMLParser
-            
-            class TableParser(HTMLParser):
-                def __init__(self):
-                    super().__init__()
-                    self.rows = []
-                    self.current_row = []
-                    self.current_cell = []
-                    self.in_table = False
-                    
-                def handle_starttag(self, tag, attrs):
-                    if tag == "table":
-                        self.in_table = True
-                    elif tag == "tr":
-                        self.current_row = []
-                    elif tag in ("td", "th"):
-                        self.current_cell = []
-                
-                def handle_endtag(self, tag):
-                    if tag == "table":
-                        self.in_table = False
-                    elif tag == "tr":
-                        if self.current_row:
-                            self.rows.append(self.current_row)
-                    elif tag in ("td", "th"):
-                        self.current_row.append("".join(self.current_cell).strip())
-                
-                def handle_data(self, data):
-                    if self.in_table:
-                        self.current_cell.append(data)
-            
-            parser = TableParser()
-            parser.feed(html)
-            
-            if not parser.rows:
-                return ""
-            
-            # Build markdown table
-            md_lines = []
-            for i, row in enumerate(parser.rows):
-                md_lines.append("| " + " | ".join(row) + " |")
-                if i == 0:  # Add header separator
-                    md_lines.append("| " + " | ".join(["---"] * len(row)) + " |")
-            
-            return "\n".join(md_lines)
-            
-        except Exception as e:
-            logger.warning(f"Failed to convert HTML table: {e}")
-            return html
-
     def run(self) -> None:
         """Execute the local OCR processing."""
         try:
@@ -268,8 +185,8 @@ class LocalOCRWorker(QObject):
                 return
             
             # Initialize PaddleOCR
-            logger.info("Initializing PaddleOCR engines")
-            ocr, structure = self._initialize_paddleocr()
+            logger.info("Initializing PaddleOCR engine")
+            ocr = self._initialize_paddleocr()
             
             if self.cancelled:
                 self.error.emit("Operation cancelled.")
@@ -283,19 +200,10 @@ class LocalOCRWorker(QObject):
                 self.error.emit("Operation cancelled.")
                 return
             
-            # Perform structure analysis (tables, layout)
-            logger.info("Analyzing document structure")
-            structure_result = structure(self.image_path)
-            
-            if self.cancelled:
-                self.error.emit("Operation cancelled.")
-                return
-            
             # Convert to Markdown
             logger.info("Converting to Markdown")
             markdown_text = self._convert_to_markdown(
-                ocr_result[0] if ocr_result else [],
-                structure_result
+                ocr_result[0] if ocr_result else []
             )
             
             if not markdown_text:

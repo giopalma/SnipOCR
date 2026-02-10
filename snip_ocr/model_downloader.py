@@ -3,12 +3,8 @@
 from __future__ import annotations
 
 import logging
-import os
-import tarfile
 from pathlib import Path
 from typing import Callable
-
-import requests
 
 from .config import get_config_path
 
@@ -32,13 +28,11 @@ def is_model_downloaded() -> bool:
     Returns:
         True if models exist, False otherwise.
     """
+    # PaddleOCR auto-downloads models to its cache directory
+    # We check if the default models have been initialized
     models_path = get_models_path()
-    # Check for essential model files
-    det_model = models_path / "det" / "inference.pdmodel"
-    rec_model = models_path / "rec" / "inference.pdmodel"
-    cls_model = models_path / "cls" / "inference.pdmodel"
-    
-    return det_model.exists() and rec_model.exists() and cls_model.exists()
+    marker_file = models_path / ".models_ready"
+    return marker_file.exists()
 
 
 def download_models(
@@ -46,11 +40,8 @@ def download_models(
 ) -> bool:
     """Download PaddleOCR models.
 
-    This downloads the official PaddleOCR v4 models for:
-    - Text detection
-    - Text recognition
-    - Angle classification
-    - Structure analysis (tables)
+    This initializes PaddleOCR which will auto-download the necessary models
+    to its cache directory on first use.
 
     Args:
         progress_callback: Optional callback function(current, total) for progress.
@@ -60,64 +51,41 @@ def download_models(
     """
     models_path = get_models_path()
     
-    # Model URLs for PaddleOCR v4
-    models_to_download = {
-        "det": "https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_det_infer.tar",
-        "rec": "https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_rec_infer.tar",
-        "cls": "https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_infer.tar",
-        "structure": "https://paddleocr.bj.bcebos.com/ppstructure/models/slanet/ch_ppstructure_mobile_v2.0_SLANet_infer.tar",
-    }
-    
     try:
-        total_models = len(models_to_download)
+        from paddleocr import PaddleOCR
         
-        for idx, (model_name, url) in enumerate(models_to_download.items()):
-            logger.info(f"Downloading {model_name} model from {url}")
-            
-            # Download the tar file
-            tar_path = models_path / f"{model_name}.tar"
-            
-            response = requests.get(url, stream=True, timeout=300)
-            response.raise_for_status()
-            
-            total_size = int(response.headers.get("content-length", 0))
-            downloaded = 0
-            
-            with open(tar_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if progress_callback and total_size > 0:
-                            # Report overall progress
-                            overall_progress = (idx * 100 + (downloaded * 100) // total_size) // total_models
-                            progress_callback(overall_progress, 100)
-            
-            # Extract the tar file
-            logger.info(f"Extracting {model_name} model")
-            model_dir = models_path / model_name
-            model_dir.mkdir(parents=True, exist_ok=True)
-            
-            with tarfile.open(tar_path, "r") as tar:
-                # Extract to model_dir and handle nested structure
-                tar.extractall(path=models_path)
-                
-                # Find the extracted directory (usually has _infer suffix)
-                extracted_dirs = [d for d in models_path.iterdir() if d.is_dir() and model_name in d.name.lower()]
-                if extracted_dirs:
-                    # Move contents to model_dir
-                    extracted_dir = extracted_dirs[0]
-                    for item in extracted_dir.iterdir():
-                        item.rename(model_dir / item.name)
-                    extracted_dir.rmdir()
-            
-            # Clean up tar file
-            tar_path.unlink()
-            
-            if progress_callback:
-                progress_callback(((idx + 1) * 100) // total_models, 100)
+        logger.info("Initializing PaddleOCR - models will be auto-downloaded")
         
-        logger.info("All models downloaded successfully")
+        if progress_callback:
+            progress_callback(10, 100)
+        
+        # Initialize PaddleOCR - this will trigger model download
+        ocr = PaddleOCR(
+            use_angle_cls=True,
+            lang="en",
+            use_gpu=False,
+            show_log=True,  # Show download progress
+        )
+        
+        if progress_callback:
+            progress_callback(50, 100)
+        
+        # Test with a small dummy image to ensure models are loaded
+        import numpy as np
+        dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
+        _ = ocr.ocr(dummy_img, cls=True)
+        
+        if progress_callback:
+            progress_callback(90, 100)
+        
+        # Create marker file to indicate models are ready
+        marker_file = models_path / ".models_ready"
+        marker_file.write_text("ready")
+        
+        if progress_callback:
+            progress_callback(100, 100)
+        
+        logger.info("Models downloaded and verified successfully")
         return True
         
     except Exception as e:
@@ -126,41 +94,34 @@ def download_models(
 
 
 def delete_models() -> bool:
-    """Delete downloaded models to free up space.
+    """Delete downloaded models marker to allow re-download.
 
     Returns:
         True if deletion successful, False otherwise.
     """
     try:
         models_path = get_models_path()
-        if models_path.exists():
-            import shutil
-            shutil.rmtree(models_path)
-            models_path.mkdir(parents=True, exist_ok=True)
+        marker_file = models_path / ".models_ready"
+        if marker_file.exists():
+            marker_file.unlink()
         return True
     except Exception as e:
-        logger.error(f"Failed to delete models: {e}")
+        logger.error(f"Failed to delete models marker: {e}")
         return False
 
 
 def get_model_size() -> int:
-    """Get the total size of downloaded models in bytes.
+    """Get the approximate size of PaddleOCR cache.
 
     Returns:
-        Size in bytes, 0 if models not downloaded.
+        Estimated size in bytes.
     """
     if not is_model_downloaded():
         return 0
     
-    models_path = get_models_path()
-    total_size = 0
-    
-    for dirpath, dirnames, filenames in os.walk(models_path):
-        for filename in filenames:
-            filepath = Path(dirpath) / filename
-            total_size += filepath.stat().st_size
-    
-    return total_size
+    # PaddleOCR stores models in its own cache directory
+    # We return an approximate size
+    return 150 * 1024 * 1024  # ~150 MB estimate
 
 
 def format_size(size_bytes: int) -> str:
