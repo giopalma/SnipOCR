@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..config import load_model, load_token, save_config
-from ..constants import APP_DISPLAY_NAME, AVAILABLE_MODELS
+from ..constants import APP_DISPLAY_NAME, AVAILABLE_MODELS, LOCAL_MODEL_NAME
 from ..icon_utils import get_icon
 
 if TYPE_CHECKING:
@@ -60,11 +60,21 @@ class SettingsDialog(QDialog):
         # Model selection dropdown
         self.model_combo = QComboBox()
         self.model_combo.addItems(AVAILABLE_MODELS)
+        self.model_combo.currentTextChanged.connect(self._on_model_changed)
         current_model = load_model()
         if current_model in AVAILABLE_MODELS:
             self.model_combo.setCurrentText(current_model)
 
         layout.addRow("Model:", self.model_combo)
+        
+        # Info label for local model
+        self.info_label = QLineEdit()
+        self.info_label.setReadOnly(True)
+        self.info_label.setStyleSheet("background: transparent; border: none; color: gray;")
+        layout.addRow("", self.info_label)
+        
+        # Update info based on initial model
+        self._on_model_changed(current_model)
 
         # Buttons
         buttons = QDialogButtonBox(
@@ -75,20 +85,34 @@ class SettingsDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addRow(buttons)
 
+    def _on_model_changed(self, model: str) -> None:
+        """Handle model selection change.
+        
+        Args:
+            model: Selected model name.
+        """
+        if model == LOCAL_MODEL_NAME:
+            self.info_label.setText("ℹ️ No API key required for local model")
+            self.token_input.setEnabled(False)
+        else:
+            self.info_label.setText("ℹ️ API key required for cloud models")
+            self.token_input.setEnabled(True)
+
     def _on_save(self) -> None:
         """Handle save button click."""
         token = self.token_input.text().strip()
-        if not token:
+        model = self.model_combo.currentText()
+        
+        # Token is not required for local model
+        if not token and model != LOCAL_MODEL_NAME:
             QMessageBox.warning(
                 self,
                 "Invalid Token",
-                "Please enter a valid GitHub token.",
+                "Please enter a valid GitHub token for cloud models.",
             )
             return
 
-        model = self.model_combo.currentText()
-
-        if save_config(token=token, model=model):
+        if save_config(token=token if token else None, model=model):
             self.accept()
         else:
             QMessageBox.critical(

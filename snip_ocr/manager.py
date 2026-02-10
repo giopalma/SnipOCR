@@ -26,9 +26,13 @@ from .constants import (
     ENDPOINT,
     HOTKEY_SHORTCUT,
     LANGUAGE_MAP,
+    LOCAL_MODEL_NAME,
     SYSTEM_PROMPT_TEMPLATE,
 )
 from .icon_utils import get_icon, get_icon_path
+from .local_worker import LocalOCRWorker
+from .model_downloader import is_model_downloaded
+from .ui.model_dialog import ModelDialog
 from .ui.settings_dialog import SettingsDialog
 from .ui.snipper import Snipper
 from .ui.update_dialog import UpdateDialog
@@ -68,8 +72,9 @@ class Manager(QObject):
         self.snipper.snip_done.connect(self.process)
 
         self.active_thread: QThread | None = None
-        self.active_worker: AIWorker | None = None
+        self.active_worker: AIWorker | LocalOCRWorker | None = None
         self.tray: QSystemTrayIcon | None = None
+        self.temp_image_path: str | None = None
 
         self.output_language = "Italiano"
 
@@ -95,8 +100,8 @@ class Manager(QObject):
         # Check for updates on startup
         self._check_for_updates()
 
-        # Show settings dialog on first run if no token configured
-        if not self.github_token:
+        # Show settings dialog on first run if no token configured and not using local model
+        if not self.github_token and self.selected_model != LOCAL_MODEL_NAME:
             self._show_first_run_dialog()
         else:
             # Show startup notification for subsequent runs
@@ -155,10 +160,12 @@ class Manager(QObject):
 
         action_snip = QAction("Capture", self.app)
         action_settings = QAction("Settings...", self.app)
+        action_models = QAction("Manage Models...", self.app)
         action_quit = QAction("Quit", self.app)
 
         action_snip.triggered.connect(self.trigger.emit)
         action_settings.triggered.connect(self._show_settings)
+        action_models.triggered.connect(self._show_model_manager)
         action_quit.triggered.connect(self.app.quit)
 
         # Update action (initially hidden)
@@ -172,6 +179,7 @@ class Manager(QObject):
         menu.addAction(action_en)
         menu.addSeparator()
         menu.addAction(self.update_action)
+        menu.addAction(action_models)
         menu.addAction(action_settings)
         menu.addSeparator()
         menu.addAction(action_quit)
@@ -301,6 +309,11 @@ class Manager(QObject):
             self.selected_model = dialog.get_model()
             self.model_config["model"] = self.selected_model
 
+    def _show_model_manager(self) -> None:
+        """Show the model management dialog."""
+        dialog = ModelDialog()
+        dialog.exec()
+
     def _show_first_run_dialog(self) -> None:
         """Show welcome dialog on first run."""
         QMessageBox.information(
@@ -353,19 +366,64 @@ class Manager(QObject):
             self.active_worker.cancel()
 
         target_language = LANGUAGE_MAP.get(self.output_language, "Italian")
-        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(target_language=target_language)
+        
+        # Check if using local model
+        if self.selected_model == LOCAL_MODEL_NAME:
+            # Check if models are downloaded
+            if not is_model_downloaded():
+                self._show_tray_message(
+                    f"{APP_DISPLAY_NAME} Error",
+                    "Local models not downloaded. Please download models from the menu.",
+                    QSystemTrayIcon.MessageIcon.Warning,
+                    4000,
+                )
+                return
+            
+            # Save image to temp file for local processing
+            import base64
+            import tempfile
+            from pathlib import Path
+            
+            try:
+                image_data = base64.b64decode(b64_data)
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                temp_file.write(image_data)
+                temp_file.close()
+                self.temp_image_path = temp_file.name
+                
+                # Create local worker
+                self.active_thread = QThread()
+                self.active_worker = LocalOCRWorker(
+                    self.temp_image_path,
+                    target_language,
+                )
+                self.active_worker.moveToThread(self.active_thread)
+                
+            except Exception as e:
+                logger.error(f"Failed to prepare image for local OCR: {e}")
+                self._show_tray_message(
+                    f"{APP_DISPLAY_NAME} Error",
+                    f"Failed to prepare image: {str(e)}",
+                    QSystemTrayIcon.MessageIcon.Critical,
+                    3000,
+                )
+                return
+        else:
+            # Use cloud model (existing behavior)
+            system_prompt = SYSTEM_PROMPT_TEMPLATE.format(target_language=target_language)
+            
+            self.active_thread = QThread()
+            self.active_worker = AIWorker(
+                b64_data,
+                target_language,
+                ENDPOINT,
+                self.github_token or "",
+                self.model_config,
+                system_prompt,
+            )
+            self.active_worker.moveToThread(self.active_thread)
 
-        self.active_thread = QThread()
-        self.active_worker = AIWorker(
-            b64_data,
-            target_language,
-            ENDPOINT,
-            self.github_token or "",
-            self.model_config,
-            system_prompt,
-        )
-        self.active_worker.moveToThread(self.active_thread)
-
+        # Connect signals
         self.active_thread.started.connect(self.active_worker.run)
         self.active_worker.finished.connect(self._on_success)
         self.active_worker.error.connect(self._on_error)
@@ -374,6 +432,7 @@ class Manager(QObject):
         self.active_worker.error.connect(self.active_thread.quit)
         self.active_thread.finished.connect(self.active_worker.deleteLater)
         self.active_thread.finished.connect(self.active_thread.deleteLater)
+        self.active_thread.finished.connect(self._cleanup_temp_file)
 
         self.active_thread.start()
 
@@ -399,6 +458,17 @@ class Manager(QObject):
         )
 
         logger.info("Copied to clipboard:\n%s", clean)
+
+    def _cleanup_temp_file(self) -> None:
+        """Clean up temporary image file after processing."""
+        if self.temp_image_path:
+            try:
+                import os
+                if os.path.exists(self.temp_image_path):
+                    os.unlink(self.temp_image_path)
+                self.temp_image_path = None
+            except Exception as e:
+                logger.warning(f"Failed to clean up temp file: {e}")
 
     def _on_error(self, err_msg: str) -> None:
         """Handle AI processing error."""

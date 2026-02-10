@@ -13,7 +13,11 @@ ENDPOINT: str = "https://models.inference.ai.azure.com/chat/completions"
 HOTKEY_SHORTCUT = "Ctrl+Shift+S"
 
 # Available models
-AVAILABLE_MODELS = ["gpt-4o", "gpt-4o-mini"]
+AVAILABLE_MODELS = ["gpt-4o", "gpt-4o-mini", "local-paddleocr"]
+
+# Local model configuration
+LOCAL_MODEL_NAME = "local-paddleocr"
+MODEL_DOWNLOAD_URL = "https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_det_infer.tar"
 
 # Language mapping
 LANGUAGE_MAP: dict[str, str] = {

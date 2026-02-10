@@ -43,3 +43,9 @@ htmlcov/
 # Type checking
 .mypy_cache/
 .pytype/
+
+# PaddleOCR models
+models/
+*.pdmodel
+*.pdiparams
+*.pdopt

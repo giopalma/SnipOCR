@@ -26,6 +26,8 @@ dependencies = [
     "pyperclip>=1.8.0",
     "pyqt6>=6.5.0",
     "requests>=2.31.0",
+    "paddleocr>=3.0.0",
+    "paddlepaddle>=3.0.0",
 ]
 
 [project.urls]
