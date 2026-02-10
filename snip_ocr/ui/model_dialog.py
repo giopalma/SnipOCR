@@ -39,9 +39,11 @@ class ModelDownloadWorker(QThread):
         """Download models in background thread."""
         try:
             from ..model_downloader import download_models
-            
+
             success = download_models(
-                progress_callback=lambda current, total: self.progress.emit(current, total)
+                progress_callback=lambda current, total: self.progress.emit(
+                    current, total
+                )
             )
             self.finished.emit(success)
         except Exception as e:

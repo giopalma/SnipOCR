@@ -70,7 +70,9 @@ class SettingsDialog(QDialog):
         # Info label for local model
         self.info_label = QLineEdit()
         self.info_label.setReadOnly(True)
-        self.info_label.setStyleSheet("background: transparent; border: none; color: gray;")
+        self.info_label.setStyleSheet(
+            "background: transparent; border: none; color: gray;"
+        )
         layout.addRow("", self.info_label)
         
         # Update info based on initial model

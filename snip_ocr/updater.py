@@ -92,7 +92,9 @@ class UpdateChecker:
                 self.latest_commit, self.current_commit
             ):
                 logger.info(
-                    "Update available: %s -> %s", self.current_commit, self.latest_commit
+                    "Update available: %s -> %s",
+                    self.current_commit,
+                    self.latest_commit,
                 )
                 return True
 

@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from .model_downloader import get_models_path
-
 if TYPE_CHECKING:
     pass
 
@@ -92,9 +90,9 @@ class LocalOCRWorker(QObject):
         
         # Set environment variable for PaddlePaddle
         if hardware == "xpu":
-            os.environ["FLAGS_use_xpu"] = "1"
+            os.environ["FLAGS_USE_XPU"] = "1"
         elif hardware == "gpu":
-            os.environ["FLAGS_use_cuda"] = "1"
+            os.environ["FLAGS_USE_CUDA"] = "1"
         
         # Configure OCR engine with new API
         ocr_kwargs = {

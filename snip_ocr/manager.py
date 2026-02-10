@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import pyperclip
 from pynput import keyboard
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
-from PyQt6.QtGui import QAction, QActionGroup, QIcon
+from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -100,7 +100,8 @@ class Manager(QObject):
         # Check for updates on startup
         self._check_for_updates()
 
-        # Show settings dialog on first run if no token configured and not using local model
+        # Show settings dialog on first run if no token configured
+        # and not using local model
         if not self.github_token and self.selected_model != LOCAL_MODEL_NAME:
             self._show_first_run_dialog()
         else:
@@ -373,7 +374,8 @@ class Manager(QObject):
             if not is_model_downloaded():
                 self._show_tray_message(
                     f"{APP_DISPLAY_NAME} Error",
-                    "Local models not downloaded. Please download models from the menu.",
+                    "Local models not downloaded. "
+                    "Please download models from the menu.",
                     QSystemTrayIcon.MessageIcon.Warning,
                     4000,
                 )
@@ -382,14 +384,14 @@ class Manager(QObject):
             # Save image to temp file for local processing
             import base64
             import tempfile
-            from pathlib import Path
             
             try:
                 image_data = base64.b64decode(b64_data)
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                temp_file.write(image_data)
-                temp_file.close()
-                self.temp_image_path = temp_file.name
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".png"
+                ) as temp_file:
+                    temp_file.write(image_data)
+                    self.temp_image_path = temp_file.name
                 
                 # Create local worker
                 self.active_thread = QThread()
@@ -410,7 +412,9 @@ class Manager(QObject):
                 return
         else:
             # Use cloud model (existing behavior)
-            system_prompt = SYSTEM_PROMPT_TEMPLATE.format(target_language=target_language)
+            system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
+                target_language=target_language
+            )
             
             self.active_thread = QThread()
             self.active_worker = AIWorker(
