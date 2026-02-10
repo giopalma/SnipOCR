@@ -84,26 +84,23 @@ class LocalOCRWorker(QObject):
         """Initialize PaddleOCR with appropriate hardware backend.
 
         Returns:
-            Tuple of (ocr_engine, structure_engine, formula_engine) or raises exception.
+            PaddleOCR engine instance.
         """
         from paddleocr import PaddleOCR
         
-        models_path = get_models_path()
         hardware = self._detect_hardware()
         
         # Set environment variable for PaddlePaddle
         if hardware == "xpu":
             os.environ["FLAGS_use_xpu"] = "1"
+        elif hardware == "gpu":
+            os.environ["FLAGS_use_cuda"] = "1"
         
-        use_gpu = hardware in ("gpu", "xpu")
-        
-        # Configure OCR engine - use online models initially
-        # Models will be auto-downloaded to default cache location
+        # Configure OCR engine with new API
         ocr_kwargs = {
-            "use_angle_cls": True,
             "lang": "en",  # English models work well for multilingual content
-            "use_gpu": use_gpu,
-            "show_log": False,
+            "use_textline_orientation": True,  # Enable angle correction
+            "ocr_version": "PP-OCRv4",  # Use latest version
         }
         
         try:
@@ -194,7 +191,7 @@ class LocalOCRWorker(QObject):
             
             # Perform OCR
             logger.info(f"Processing image: {self.image_path}")
-            ocr_result = ocr.ocr(self.image_path, cls=True)
+            ocr_result = ocr(self.image_path)
             
             if self.cancelled:
                 self.error.emit("Operation cancelled.")

@@ -61,10 +61,9 @@ def download_models(
         
         # Initialize PaddleOCR - this will trigger model download
         ocr = PaddleOCR(
-            use_angle_cls=True,
             lang="en",
-            use_gpu=False,
-            show_log=True,  # Show download progress
+            use_textline_orientation=True,
+            ocr_version="PP-OCRv4",
         )
         
         if progress_callback:
@@ -73,7 +72,7 @@ def download_models(
         # Test with a small dummy image to ensure models are loaded
         import numpy as np
         dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
-        _ = ocr.ocr(dummy_img, cls=True)
+        _ = ocr(dummy_img)
         
         if progress_callback:
             progress_callback(90, 100)
