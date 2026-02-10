@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QLabel,
     QLineEdit,
     QMessageBox,
     QWidget,
@@ -66,13 +67,11 @@ class SettingsDialog(QDialog):
             self.model_combo.setCurrentText(current_model)
 
         layout.addRow("Model:", self.model_combo)
-        
-        # Info label for local model
-        self.info_label = QLineEdit()
-        self.info_label.setReadOnly(True)
-        self.info_label.setStyleSheet(
-            "background: transparent; border: none; color: gray;"
-        )
+
+        # Info label for local model (using QLabel as per review suggestion)
+        self.info_label = QLabel()
+        self.info_label.setWordWrap(True)
+        self.info_label.setStyleSheet("color: gray;")
         layout.addRow("", self.info_label)
         
         # Update info based on initial model

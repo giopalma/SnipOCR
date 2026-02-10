@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Constants for math formatting
+MAX_INLINE_MATH_LENGTH = 100  # Maximum characters for inline math formulas
+
 
 class LocalOCRWorker(QObject):
     """Background worker for local OCR processing using PaddleOCR.
@@ -166,7 +169,7 @@ class LocalOCRWorker(QObject):
             Text with LaTeX formatting applied.
         """
         # Simple heuristic: if line looks like an equation, wrap in $$
-        if "=" in text and len(text.strip()) < 100:
+        if "=" in text and len(text.strip()) < MAX_INLINE_MATH_LENGTH:
             return f"$${text.strip()}$$"
         else:
             # Inline math for shorter expressions

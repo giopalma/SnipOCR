@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 import logging
+import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -382,9 +385,6 @@ class Manager(QObject):
                 return
             
             # Save image to temp file for local processing
-            import base64
-            import tempfile
-            
             try:
                 image_data = base64.b64decode(b64_data)
                 with tempfile.NamedTemporaryFile(
@@ -467,7 +467,6 @@ class Manager(QObject):
         """Clean up temporary image file after processing."""
         if self.temp_image_path:
             try:
-                import os
                 if os.path.exists(self.temp_image_path):
                     os.unlink(self.temp_image_path)
                 self.temp_image_path = None
