@@ -14,7 +14,8 @@ Capture any region of your screen with a hotkey, and instantly get clean Markdow
 - 🔬 **Scientific OCR** — Accurate extraction of text, formulas, and tables
 - 📐 **LaTeX Support** — Automatic `$...$` inline and `$$...$$` block formatting
 - 🌍 **Multi-language** — Output in Italian or English (auto-translates if needed)
-- 🤖 **Model Selection** — Choose between GPT-4o and GPT-4o-mini
+- 🤖 **Model Selection** — Choose between GPT-4o, GPT-4o-mini, or local PaddleOCR
+- 🔌 **Offline Mode** — Use local PaddleOCR model without internet connection
 - 📋 **Clipboard Ready** — Markdown copied instantly, ready to paste
 - 🖥️ **System Tray** — Runs quietly in the background
 - 🔄 **Auto-Update** — Automatic update notifications and one-click updates
@@ -32,13 +33,27 @@ Download the latest release for your platform:
 
 ### First Run
 
-On first launch, the app will ask you to configure your **GitHub Token**:
+#### Using Cloud Models (GPT-4o/GPT-4o-mini)
+
+On first launch with cloud models, the app will ask you to configure your **GitHub Token**:
 
 1. Go to [GitHub Personal Access Tokens](https://github.com/settings/personal-access-tokens/new)
 2. Create a new token with read-only access to **Models**
 3. Paste it into the Settings dialog
 
 That's it! Your token is saved securely and you won't need to configure it again.
+
+#### Using Local Model (PaddleOCR)
+
+To use the offline local model:
+
+1. Right-click the system tray icon → **Settings**
+2. Select **local-paddleocr** from the Model dropdown
+3. No GitHub Token required!
+4. Right-click the system tray icon → **Manage Models**
+5. Click **Download Models** to initialize (~150 MB download)
+
+Once downloaded, you can use SnipOCR completely offline.
 
 ## 📖 Usage
 
@@ -53,8 +68,21 @@ That's it! Your token is saved securely and you won't need to configure it again
 Right-click the tray icon to access:
 
 - 🌍 **Language** — Switch between Italian and English output
-- 🤖 **Model** — Choose GPT-4o or GPT-4o-mini
-- ⚙️ **Settings** — Update your GitHub Token
+- 🤖 **Model** — Choose GPT-4o, GPT-4o-mini, or local-paddleocr
+- 🔌 **Manage Models** — Download/manage local OCR models
+- ⚙️ **Settings** — Update your GitHub Token (not required for local model)
+
+### Offline Mode
+
+The **local-paddleocr** model enables completely offline operation:
+
+- ✅ **No internet required** after initial model download
+- ✅ **No API key needed** — works without GitHub Token
+- ✅ **Privacy-focused** — all processing happens locally
+- ✅ **Hardware acceleration** — supports CPU, CUDA GPU, and Intel ARC (XPU)
+- ⚠️ **Initial setup** — requires ~150 MB download on first use
+
+**Note:** The local model is optimized for text recognition. For complex mathematical formulas and advanced layout analysis, cloud models (GPT-4o) may provide better results.
 
 ### Updates
 

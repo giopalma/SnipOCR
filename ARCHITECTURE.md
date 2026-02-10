@@ -12,11 +12,14 @@ SnipOCR/
 │   ├── constants.py            # Application constants and settings
 │   ├── config.py               # Configuration management (token, model)
 │   ├── updater.py              # Automatic update checking and installation
-│   ├── worker.py               # AI worker thread for OCR processing
+│   ├── worker.py               # AI worker thread for cloud OCR processing
+│   ├── local_worker.py         # Local OCR worker using PaddleOCR
+│   ├── model_downloader.py     # Model download and management
 │   ├── manager.py              # Main application manager
 │   └── ui/                     # UI components
 │       ├── __init__.py
 │       ├── settings_dialog.py  # Settings dialog
+│       ├── model_dialog.py     # Model management dialog
 │       ├── snipper.py          # Screenshot overlay widget
 │       └── update_dialog.py    # Update progress dialog
 ├── icon.png                     # Application icon
@@ -53,9 +56,21 @@ SnipOCR/
 - Platform-specific installer handling
 
 ### `snip_ocr/worker.py`
-- `AIWorker` class: Background thread for AI API calls
+- `AIWorker` class: Background thread for cloud AI API calls
 - Handles retries and error recovery
-- Processes screenshots through AI API
+- Processes screenshots through GitHub Models API (GPT-4o/GPT-4o-mini)
+
+### `snip_ocr/local_worker.py`
+- `LocalOCRWorker` class: Background thread for local OCR processing
+- Uses PaddleOCR for offline text recognition
+- Hardware detection (CPU/CUDA/XPU)
+- Converts OCR results to Markdown with LaTeX
+
+### `snip_ocr/model_downloader.py`
+- Model download and management functions
+- Checks if PaddleOCR models are downloaded
+- Triggers model initialization and download
+- Model size estimation
 
 ### `snip_ocr/manager.py`
 - `Manager` class: Main application controller
@@ -63,14 +78,22 @@ SnipOCR/
   - System tray icon and menu
   - Hotkey listener (pynput)
   - Screenshot capture (Snipper)
-  - AI processing (AIWorker)
+  - AI processing (AIWorker for cloud, LocalOCRWorker for local)
   - Update checking (UpdateChecker)
 - Handles application lifecycle
+- Routes processing to appropriate worker based on model selection
 
 ### `snip_ocr/ui/settings_dialog.py`
 - `SettingsDialog` class: Configuration UI
-- GitHub token input
-- Model selection
+- GitHub token input (optional for local model)
+- Model selection (cloud vs local)
+- Disables token requirement when local model selected
+
+### `snip_ocr/ui/model_dialog.py`
+- `ModelDialog` class: Model management UI
+- Shows model download status
+- Downloads PaddleOCR models with progress bar
+- Model deletion option
 
 ### `snip_ocr/ui/snipper.py`
 - `Snipper` class: Full-screen overlay for region selection
@@ -84,16 +107,31 @@ SnipOCR/
 
 ## Data Flow
 
-### Screenshot Capture Flow
+### Screenshot Capture Flow (Cloud Models)
 1. User presses `Ctrl+Shift+S` (or clicks tray icon)
 2. `Manager` receives trigger signal
 3. `Snipper` overlay displays
 4. User selects region
 5. `Snipper` captures screenshot, converts to base64
 6. `Manager` creates `AIWorker` in background thread
-7. `AIWorker` sends image to AI API
+7. `AIWorker` sends image to GitHub Models API
 8. Result copied to clipboard
 9. Notification displayed
+
+### Screenshot Capture Flow (Local Model)
+1. User presses `Ctrl+Shift+S` (or clicks tray icon)
+2. `Manager` receives trigger signal
+3. `Snipper` overlay displays
+4. User selects region
+5. `Snipper` captures screenshot, converts to base64
+6. `Manager` saves image to temporary file
+7. `Manager` creates `LocalOCRWorker` in background thread
+8. `LocalOCRWorker` initializes PaddleOCR with hardware detection
+9. PaddleOCR processes image locally (CPU/GPU/XPU)
+10. OCR results converted to Markdown with LaTeX formatting
+11. Result copied to clipboard
+12. Temporary file cleaned up
+13. Notification displayed
 
 ### Update Check Flow
 1. Application starts, `Manager` initializes
@@ -106,6 +144,20 @@ SnipOCR/
 6. `UpdateDialog` displays and downloads update
 7. User chooses to install now or later
 8. If installing now, application closes and installer runs
+
+### Model Download Flow
+1. User selects **local-paddleocr** model in Settings
+2. User opens **Manage Models** from tray menu
+3. `ModelDialog` checks if models are downloaded via `is_model_downloaded()`
+4. If not downloaded, user clicks "Download Models"
+5. Confirmation dialog shown (~150 MB download)
+6. `ModelDownloadWorker` thread starts
+7. PaddleOCR initialized, triggering auto-download of models
+8. Progress bar updates during download
+9. Models cached in `~/.paddlex/official_models/`
+10. Marker file created in app config directory
+11. Success notification displayed
+12. Local OCR now ready for offline use
 
 ## Configuration
 
@@ -121,6 +173,17 @@ Example `config.json`:
 }
 ```
 
+Or for local model (no token required):
+```json
+{
+  "model": "local-paddleocr"
+}
+```
+
+Model files are stored separately:
+- **PaddleOCR cache**: `~/.paddlex/official_models/`
+- **App marker file**: `%APPDATA%/SnipOCR/models/.models_ready` (Windows) or `~/.config/SnipOCR/models/.models_ready` (macOS/Linux)
+
 ## Dependencies
 
 ### Runtime Dependencies
@@ -129,6 +192,8 @@ Example `config.json`:
 - `pyperclip`: Clipboard operations
 - `requests`: HTTP requests (AI API, update checking)
 - `pillow`: Image processing
+- `paddleocr`: Local OCR engine
+- `paddlepaddle`: Deep learning framework for PaddleOCR
 
 ### Development Dependencies
 - `pyinstaller`: Creates standalone executables
