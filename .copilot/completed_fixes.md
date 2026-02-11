@@ -200,3 +200,44 @@ When dealing with external libraries that cache data:
 - Handle cases where cache might not exist
 
 **Commit**: 4961904
+
+## Fix PIR Attribute Error During OCR Usage (2026-02-11)
+
+### Issue
+After successfully downloading models, actual OCR processing failed with:
+```
+[ERROR] Local OCR failed: (Unimplemented) ConvertPirAttribute2RuntimeAttribute not support [pir::ArrayAttribute
+```
+
+Models loaded fine, but failed when processing actual images.
+
+### Root Cause
+The `ocr_version="PP-OCRv4"` parameter forced PaddleOCR to use the newest version with PIR (Program Intermediate Representation) support. PIR is an experimental IR system in PaddlePaddle 3.x with incomplete implementation.
+
+### Solution (Commit: 38bec0f)
+Removed `ocr_version="PP-OCRv4"` from:
+1. `local_worker.py` (line 104) - OCR processing
+2. `model_downloader.py` (line 69) - Model download
+
+**Result:** PaddleOCR now uses default stable version without PIR issues.
+
+### Technical Background
+**PIR (Program Intermediate Representation):**
+- New IR system in PaddlePaddle 3.x
+- Replaces older program representation
+- Still experimental with incomplete features
+- `ConvertPirAttribute2RuntimeAttribute` not fully implemented for all attribute types
+
+**Why Default Version Works:**
+- Default OCR version doesn't force PIR usage
+- Falls back to stable, well-tested IR
+- All features still work: detection, recognition, angle correction
+
+### Key Learning
+When using cutting-edge ML frameworks:
+- Latest version != most stable
+- Avoid forcing specific versions unless necessary
+- Let library choose appropriate defaults
+- Experimental features may have incomplete implementations
+
+**Commit**: 38bec0f
