@@ -81,3 +81,41 @@
 - Reusable components
 - Proper threading for background tasks
 - Comprehensive error handling
+
+## Additional Fix - Second AttributeError (2026-02-11)
+
+### Issue
+After the first fix, another AttributeError occurred:
+```
+AttributeError: 'SettingsDialog' object has no attribute 'local_model_group'
+```
+
+### Root Cause
+Same pattern as the first bug - `_on_model_changed()` was called before all widgets were created:
+- Line 179: Called `_on_model_changed(current_model)`
+- Line 182: Created `self.local_model_group` (too late!)
+
+### Solution (Commit: 6b20cf3)
+Moved signal connection and initial call to after ALL widgets are created:
+- Removed premature call on line 179
+- Added proper initialization after line 216 (after `_update_model_status()`)
+
+### Key Learning
+In PyQt, always ensure complete widget tree is created before:
+1. Connecting signals that trigger methods
+2. Manually calling methods that reference widgets
+3. Setting initial values that trigger signals
+
+### Correct Pattern
+```python
+# 1. Create all widgets first
+self.widget1 = QWidget()
+self.widget2 = QWidget()
+self.widget3 = QWidget()
+
+# 2. THEN connect signals
+self.widget1.signal.connect(self._handler)
+
+# 3. THEN set initial values/call handlers
+self._handler(initial_value)
+```
