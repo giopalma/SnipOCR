@@ -61,7 +61,6 @@ class SettingsDialog(QDialog):
         # Model selection dropdown
         self.model_combo = QComboBox()
         self.model_combo.addItems(AVAILABLE_MODELS)
-        self.model_combo.currentTextChanged.connect(self._on_model_changed)
         current_model = load_model()
         if current_model in AVAILABLE_MODELS:
             self.model_combo.setCurrentText(current_model)
@@ -73,6 +72,9 @@ class SettingsDialog(QDialog):
         self.info_label.setWordWrap(True)
         self.info_label.setStyleSheet("color: gray;")
         layout.addRow("", self.info_label)
+        
+        # Connect signal AFTER info_label is created to avoid AttributeError
+        self.model_combo.currentTextChanged.connect(self._on_model_changed)
         
         # Update info based on initial model
         self._on_model_changed(current_model)

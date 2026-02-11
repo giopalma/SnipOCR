@@ -166,7 +166,8 @@ class ModelDialog(QDialog):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         self.status_label.setText("Downloading models...")
-        self.status_label.setStyleSheet("color: blue;")
+        # Use default text color for theme compatibility
+        self.status_label.setStyleSheet("")
         
         self.download_thread = ModelDownloadWorker()
         self.download_thread.progress.connect(self._on_progress)

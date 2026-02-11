@@ -60,26 +60,31 @@ def download_models(
             progress_callback(10, 100)
         
         # Initialize PaddleOCR - this will trigger model download
+        # This is the longest step and can take several minutes
+        logger.info("Downloading OCR models... This may take a few minutes.")
         ocr = PaddleOCR(
             lang="en",
             use_textline_orientation=True,
             ocr_version="PP-OCRv4",
         )
         
+        logger.info("Models initialized, testing...")
         if progress_callback:
-            progress_callback(50, 100)
+            progress_callback(70, 100)
         
         # Test with a small dummy image to ensure models are loaded
         import numpy as np
         dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
-        _ = ocr(dummy_img)
+        result = ocr(dummy_img)
         
+        logger.info(f"Model test completed, result type: {type(result)}")
         if progress_callback:
             progress_callback(90, 100)
         
         # Create marker file to indicate models are ready
         marker_file = models_path / ".models_ready"
         marker_file.write_text("ready")
+        logger.info(f"Marker file created at: {marker_file}")
         
         if progress_callback:
             progress_callback(100, 100)
@@ -88,7 +93,7 @@ def download_models(
         return True
         
     except Exception as e:
-        logger.error(f"Failed to download models: {e}")
+        logger.error(f"Failed to download models: {e}", exc_info=True)
         return False
 
 
