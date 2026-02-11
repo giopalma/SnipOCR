@@ -174,10 +174,6 @@ class SettingsDialog(QDialog):
         model_group.setLayout(model_layout)
         layout.addWidget(model_group)
 
-        # Connect signal AFTER widgets are created
-        self.model_combo.currentTextChanged.connect(self._on_model_changed)
-        self._on_model_changed(current_model)
-
         # Local model management group
         self.local_model_group = QGroupBox("Local Model Management")
         local_layout = QVBoxLayout()
@@ -218,6 +214,11 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.local_model_group)
 
         self._update_model_status()
+
+        # Connect signal AFTER all widgets are created
+        self.model_combo.currentTextChanged.connect(self._on_model_changed)
+        # Set initial visibility based on current model
+        self._on_model_changed(current_model)
 
         layout.addStretch()
         self.tabs.addTab(model_tab, "OCR Model")
