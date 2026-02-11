@@ -63,10 +63,11 @@ def download_models(
         # Initialize PaddleOCR - this will trigger model download
         # This is the longest step and can take several minutes
         logger.info("Downloading OCR models... This may take a few minutes.")
+        # Note: ocr_version removed - PP-OCRv4 with PaddlePaddle 3.x has PIR issues
+        # Let PaddleOCR use default stable version
         ocr = PaddleOCR(
             lang="en",
             use_textline_orientation=True,
-            ocr_version="PP-OCRv4",
         )
         
         logger.info("Models initialized, testing...")

@@ -101,7 +101,8 @@ class LocalOCRWorker(QObject):
         ocr_kwargs = {
             "lang": "en",  # English models work well for multilingual content
             "use_textline_orientation": True,  # Enable angle correction
-            "ocr_version": "PP-OCRv4",  # Use latest version
+            # Note: ocr_version removed - let PaddleOCR use default stable version
+            # PP-OCRv4 with PaddlePaddle 3.x has PIR compatibility issues
         }
         
         try:
