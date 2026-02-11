@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -116,34 +117,62 @@ def download_models(
 
 
 def delete_models() -> bool:
-    """Delete downloaded models marker to allow re-download.
+    """Delete downloaded models and marker to allow re-download.
+    
+    Deletes both the marker file and the actual PaddleOCR model cache directory.
 
     Returns:
         True if deletion successful, False otherwise.
     """
     try:
+        # Delete marker file
         models_path = get_models_path()
         marker_file = models_path / ".models_ready"
         if marker_file.exists():
             marker_file.unlink()
+            logger.info(f"Deleted marker file: {marker_file}")
+        
+        # Delete PaddleOCR cache directory
+        # PaddleOCR stores models in ~/.paddlex/official_models/
+        paddlex_cache = Path.home() / ".paddlex" / "official_models"
+        if paddlex_cache.exists():
+            logger.info(f"Deleting PaddleOCR cache: {paddlex_cache}")
+            shutil.rmtree(paddlex_cache)
+            logger.info("PaddleOCR cache deleted successfully")
+        else:
+            logger.info(f"PaddleOCR cache not found at: {paddlex_cache}")
+        
         return True
     except Exception as e:
-        logger.error(f"Failed to delete models marker: {e}")
+        logger.error(f"Failed to delete models: {e}", exc_info=True)
         return False
 
 
 def get_model_size() -> int:
-    """Get the approximate size of PaddleOCR cache.
+    """Get the actual size of PaddleOCR cache.
 
     Returns:
-        Estimated size in bytes.
+        Size in bytes, or estimated size if cache doesn't exist.
     """
     if not is_model_downloaded():
         return 0
     
-    # PaddleOCR stores models in its own cache directory
-    # We return an approximate size
-    return 150 * 1024 * 1024  # ~150 MB estimate
+    # PaddleOCR stores models in ~/.paddlex/official_models/
+    paddlex_cache = Path.home() / ".paddlex" / "official_models"
+    
+    if not paddlex_cache.exists():
+        return 150 * 1024 * 1024  # ~150 MB estimate if cache not found
+    
+    try:
+        # Calculate actual directory size
+        total_size = 0
+        for file_path in paddlex_cache.rglob('*'):
+            if file_path.is_file():
+                total_size += file_path.stat().st_size
+        return total_size
+    except Exception as e:
+        logger.warning(f"Failed to calculate model size: {e}")
+        return 150 * 1024 * 1024  # Return estimate on error
 
 
 def format_size(size_bytes: int) -> str:
