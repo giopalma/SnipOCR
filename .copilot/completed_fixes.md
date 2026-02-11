@@ -155,3 +155,48 @@ else:
 **Key Learning**: When integrating external libraries, always handle API version differences, especially for libraries that may have been previously installed.
 
 **Commit**: e1606a5
+
+## Implement Actual Model Deletion (2026-02-11)
+
+### Issue
+User reported that "Delete Models" button wasn't actually deleting the models. After clicking delete, PaddleOCR still showed:
+```
+Model files already exist. Using cached files. To redownload, please delete the directory manually: 
+C:\Users\Giovanni\.paddlex\official_models\PP-LCNet_x1_0_doc_ori
+```
+
+### Root Cause
+The `delete_models()` function only deleted the marker file (`.models_ready`) but not the actual PaddleOCR cache directory where models are stored (`~/.paddlex/official_models/`).
+
+### Solution (Commit: 4961904)
+
+**Updated `delete_models()` to:**
+1. Delete marker file
+2. Delete entire PaddleOCR cache directory using `shutil.rmtree()`
+3. Log each deletion step
+
+**Updated `get_model_size()` to:**
+- Calculate actual directory size by recursively summing files
+- Fallback to 150 MB estimate if calculation fails
+- More accurate size reporting
+
+### Implementation
+```python
+def delete_models() -> bool:
+    # Delete marker file
+    marker_file.unlink()
+    
+    # Delete PaddleOCR cache directory
+    paddlex_cache = Path.home() / ".paddlex" / "official_models"
+    if paddlex_cache.exists():
+        shutil.rmtree(paddlex_cache)
+```
+
+### Key Learning
+When dealing with external libraries that cache data:
+- Don't just track with marker files
+- Actually clean up the library's cache directories
+- Provide clear logging of what's being deleted
+- Handle cases where cache might not exist
+
+**Commit**: 4961904
