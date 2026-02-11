@@ -192,7 +192,16 @@ class LocalOCRWorker(QObject):
             
             # Perform OCR
             logger.info(f"Processing image: {self.image_path}")
-            ocr_result = ocr(self.image_path)
+            
+            # Handle different PaddleOCR API versions
+            if hasattr(ocr, 'ocr') and callable(ocr.ocr):
+                # Newer API with ocr() method
+                ocr_result = ocr.ocr(self.image_path)
+            elif callable(ocr):
+                # Older API with direct calling
+                ocr_result = ocr(self.image_path)
+            else:
+                raise RuntimeError("PaddleOCR object doesn't have a callable interface")
             
             if self.cancelled:
                 self.error.emit("Operation cancelled.")

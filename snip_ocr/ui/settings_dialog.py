@@ -111,7 +111,7 @@ class SettingsDialog(QDialog):
             self.setWindowIcon(icon)
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - Settings")
         self.setMinimumWidth(550)
-        self.setMinimumHeight(400)
+        self.setMinimumHeight(550)  # Increased for Local Model Management section
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
 
         self.update_checker = update_checker
