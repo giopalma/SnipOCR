@@ -119,3 +119,39 @@ self.widget1.signal.connect(self._handler)
 # 3. THEN set initial values/call handlers
 self._handler(initial_value)
 ```
+
+## Fix Window Height and PaddleOCR API Issues (2026-02-11)
+
+### Issue 1: Window Too Small
+**Problem**: Dialog too small in height when local-paddleocr selected and "Local Model Management" section shown.
+**Solution**: Increased minimum height from 400px to 550px in settings_dialog.py
+**Commit**: e1606a5
+
+### Issue 2: Model Download Failure
+**Problem**: Download failed with error `'PaddleOCR' object is not callable`
+**Root Cause**: 
+- PaddleOCR API changed between versions
+- Older version: `ocr(image)` - direct calling
+- Newer version: `ocr.ocr(image)` - method calling
+- User had cached models from older version but newer code
+
+**Solution**: Added API compatibility layer in both files:
+1. `model_downloader.py` - Test phase
+2. `local_worker.py` - Actual OCR processing
+
+**Compatibility Pattern**:
+```python
+if hasattr(ocr, 'ocr') and callable(ocr.ocr):
+    # Newer API
+    result = ocr.ocr(image)
+elif callable(ocr):
+    # Older API  
+    result = ocr(image)
+else:
+    # Handle gracefully
+    result = None
+```
+
+**Key Learning**: When integrating external libraries, always handle API version differences, especially for libraries that may have been previously installed.
+
+**Commit**: e1606a5
