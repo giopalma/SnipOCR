@@ -35,10 +35,8 @@ from .constants import (
 from .icon_utils import get_icon, get_icon_path
 from .local_worker import LocalOCRWorker
 from .model_downloader import is_model_downloaded
-from .ui.model_dialog import ModelDialog
 from .ui.settings_dialog import SettingsDialog
 from .ui.snipper import Snipper
-from .ui.update_dialog import UpdateDialog
 from .updater import UpdateChecker
 from .worker import AIWorker
 
@@ -164,17 +162,15 @@ class Manager(QObject):
 
         action_snip = QAction("Capture", self.app)
         action_settings = QAction("Settings...", self.app)
-        action_models = QAction("Manage Models...", self.app)
         action_quit = QAction("Quit", self.app)
 
         action_snip.triggered.connect(self.trigger.emit)
         action_settings.triggered.connect(self._show_settings)
-        action_models.triggered.connect(self._show_model_manager)
         action_quit.triggered.connect(self.app.quit)
 
-        # Update action (initially hidden)
+        # Update action (initially hidden, opens settings when clicked)
         self.update_action = QAction("Update Available...", self.app)
-        self.update_action.triggered.connect(self._show_update_dialog)
+        self.update_action.triggered.connect(self._show_settings_updates_tab)
         self.update_action.setVisible(False)
 
         menu.addAction(action_snip)
@@ -183,7 +179,6 @@ class Manager(QObject):
         menu.addAction(action_en)
         menu.addSeparator()
         menu.addAction(self.update_action)
-        menu.addAction(action_models)
         menu.addAction(action_settings)
         menu.addSeparator()
         menu.addAction(action_quit)
@@ -273,26 +268,7 @@ class Manager(QObject):
     def _on_notification_clicked(self) -> None:
         """Handle notification click."""
         if self.update_available:
-            self._show_update_dialog()
-
-    def _show_update_dialog(self) -> None:
-        """Show the update download and installation dialog."""
-        if not self.update_available:
-            return
-
-        dialog = UpdateDialog(self.update_checker)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            # User chose to install now
-            self._show_tray_message(
-                APP_DISPLAY_NAME,
-                "Installing update... The application will close.",
-                QSystemTrayIcon.MessageIcon.Information,
-                3000,
-            )
-            # Give time for notification to show
-            self.app.processEvents()
-            # Quit the application
-            self.app.quit()
+            self._show_settings_updates_tab()
 
     def _set_language(self, lang: str) -> None:
         """Update the output language preference."""
@@ -305,18 +281,35 @@ class Manager(QObject):
         )
 
     def _show_settings(self) -> None:
-        """Show the settings dialog."""
-        dialog = SettingsDialog()
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        """Show the comprehensive settings dialog."""
+        dialog = SettingsDialog(update_checker=self.update_checker)
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
             # Reload configuration
             self.github_token = dialog.get_token()
             self.selected_model = dialog.get_model()
             self.model_config["model"] = self.selected_model
+            
+            # Check if update was installed (dialog accepted with update)
+            if hasattr(dialog, 'update_file') and dialog.update_file:
+                # Update is being installed, app will close
+                self.app.quit()
 
-    def _show_model_manager(self) -> None:
-        """Show the model management dialog."""
-        dialog = ModelDialog()
-        dialog.exec()
+    def _show_settings_updates_tab(self) -> None:
+        """Show settings dialog with Updates tab selected."""
+        dialog = SettingsDialog(update_checker=self.update_checker)
+        # Switch to Updates tab (index 1)
+        dialog.tabs.setCurrentIndex(1)
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            # Reload configuration
+            self.github_token = dialog.get_token()
+            self.selected_model = dialog.get_model()
+            self.model_config["model"] = self.selected_model
+            
+            # Check if update was installed
+            if hasattr(dialog, 'update_file') and dialog.update_file:
+                self.app.quit()
 
     def _show_first_run_dialog(self) -> None:
         """Show welcome dialog on first run."""
